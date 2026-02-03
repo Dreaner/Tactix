@@ -1,0 +1,25 @@
+# Docs
+TODO.md
+NOTE.md
+
+# Python 缓存
+__pycache__/
+*.pyc
+
+# 忽略视频文件 (防止上传大文件)
+assets/samples/*
+assets/output/*
+assets/weights/*
+
+# 但是！保留文件夹结构 (保留 .gitkeep)
+!assets/samples/.gitkeep
+!assets/output/.gitkeep
+
+
+# 忽略训练产生的临时文件夹
+tactix_train/
+
+# 忽略数据文件夹
+data/
+
+*.pt
