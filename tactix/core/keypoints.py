@@ -85,6 +85,45 @@ KEY_POINTS = {
     "R_GA_BOTTOM_CORNER": to_px(105-5.5, 68-24.84),  # 右小禁区-左下角
 }
 
+# ==========================================
+# 5. YOLO V4 模型输出映射 (Model Definition)
+# ==========================================
+# 这个顺序必须与训练时的 football-pitch.yaml 严格一致
+YOLO_INDEX_MAP = {
+    0: "CENTER_SPOT",
+    1: "CIRCLE_TOP",         # Circle_Intersect_Top
+    2: "CIRCLE_BOTTOM",      # Circle_Intersect_Bot
+    3: "MID_TOP",            # Mid_Line_Top
+    4: "MID_BOTTOM",         # Mid_Line_Bottom
+    
+    5: "TL_CORNER",          # L_Corner_TL
+    6: "BL_CORNER",          # L_Corner_BL
+    
+    # 左禁区关键点
+    7: "L_PA_TOP_CORNER",    # L_Penalty_TL
+    8: "L_PA_BOTTOM_CORNER", # L_Penalty_BL
+    9: "L_PA_TOP_LINE",      # L_Penalty_Line_Top
+    10: "L_PA_BOTTOM_LINE",  # L_Penalty_Line_Bot
+    11: "L_GA_TOP_CORNER",   # L_SixYard_TL
+    12: "L_GA_BOTTOM_CORNER",# L_SixYard_BL
+    13: "L_GA_TOP_LINE",     # L_SixYard_Line_Top (需在 KEY_POINTS 里补全或忽略)
+    14: "L_GA_BOTTOM_LINE",  # L_SixYard_Line_Bot (需在 KEY_POINTS 里补全或忽略)
+    15: "L_PENALTY_SPOT",
+    
+    # 右半场 (对称)
+    16: "TR_CORNER",
+    17: "BR_CORNER",
+    18: "R_PA_TOP_CORNER",
+    19: "R_PA_BOTTOM_CORNER",
+    20: "R_PA_TOP_LINE",
+    21: "R_PA_BOTTOM_LINE",
+    22: "R_GA_TOP_CORNER",
+    23: "R_GA_BOTTOM_CORNER",
+    24: "R_GA_TOP_LINE",
+    25: "R_GA_BOTTOM_LINE",
+    26: "R_PENALTY_SPOT"
+}
+
 def get_target_points(keys):
     """
     根据名字获取坐标数组

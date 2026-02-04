@@ -6,69 +6,76 @@ File Name: transformer.py
 Description: xxx...
 """
 
+
 import cv2
 import numpy as np
-from typing import List, Tuple, Optional
-from tactix.core.types import PitchConfig
+from typing import List, Optional, Tuple
+
+# 引入之前的定义
+from tactix.core.types import PitchConfig, Player
+from tactix.core.keypoints import YOLO_INDEX_MAP 
+from tactix.core.geometry import WORLD_POINTS # 确保 geometry.py 里定义了 WORLD_POINTS (米)
 
 class ViewTransformer:
-    def __init__(self, source_points: np.ndarray, target_points: np.ndarray = None):
-        """
-        初始化透视变换器
-        :param source_points: 视频中点击的4个点 [TL, TR, BR, BL]
-        :param target_points: 战术板上对应的4个点坐标 (自定义模式)
-        """
-        if source_points is None or len(source_points) != 4:
-            raise ValueError("必须提供 4 个源点坐标")
-
-        source_points = source_points.astype(np.float32)
-
-        # 1. 确定目标点
-        if target_points is None:
-            # 默认模式：全场映射 (0,0) -> (w, h)
-            w = PitchConfig.PIXEL_WIDTH
-            h = PitchConfig.PIXEL_HEIGHT
-            self.target_vertices = np.array([
-                [0, 0],       # 左上
-                [w, 0],       # 右上
-                [w, h],       # 右下
-                [0, h]        # 左下
-            ], dtype=np.float32)
-        else:
-            # 🔥 高级模式：使用你传入的自定义点 (比如中线、禁区角等)
-            if len(target_points) != 4:
-                raise ValueError("目标点必须也是 4 个")
-            self.target_vertices = target_points.astype(np.float32)
+    def __init__(self):
+        self.homography_matrix = None
         
-        # 2. 计算变换矩阵
-        self.matrix = cv2.getPerspectiveTransform(source_points, self.target_vertices)
-        print(f"✅ 透视变换矩阵初始化完成 (目标点模式: {'自定义' if target_points is not None else '默认全场'})")
+        # 预计算目标板的像素尺寸 (用于把米映射到小地图像素)
+        self.scale_x = PitchConfig.PIXEL_WIDTH / PitchConfig.LENGTH
+        self.scale_y = PitchConfig.PIXEL_HEIGHT / PitchConfig.WIDTH
+
+    def update(self, keypoints: np.ndarray, confs: np.ndarray, threshold: float = 0.5) -> bool:
+        """
+        核心: 使用 RANSAC 自动计算单应性矩阵
+        """
+        if keypoints is None: return False
+
+        src_pts = [] # 视频点 (Pixel)
+        dst_pts = [] # 战术板点 (Pixel)
+
+        for i, (x, y) in enumerate(keypoints):
+            if confs[i] < threshold: continue
+            
+            # 查表: 它是哪个点?
+            name = YOLO_INDEX_MAP.get(i)
+            if name and name in WORLD_POINTS:
+                # 1. 视频坐标
+                src_pts.append([x, y])
+                
+                # 2. 世界坐标(米) -> 战术板坐标(像素)
+                world_x, world_y = WORLD_POINTS[name]
+                target_x = int(world_x * self.scale_x)
+                target_y = int(world_y * self.scale_y)
+                dst_pts.append([target_x, target_y])
+
+        if len(src_pts) < 4:
+            return False # 点不够，无法计算
+
+        src_arr = np.array(src_pts).reshape(-1, 1, 2)
+        dst_arr = np.array(dst_pts).reshape(-1, 1, 2)
+
+        # RANSAC 计算矩阵
+        H, _ = cv2.findHomography(src_arr, dst_arr, cv2.RANSAC, 5.0)
+        
+        if H is not None:
+            self.homography_matrix = H
+            return True
+        return False
 
     def transform_point(self, xy: Tuple[float, float]) -> Optional[Tuple[int, int]]:
-        """
-        把视频坐标 (x, y) -> 战术板坐标 (x, y)
-        """
-        if self.matrix is None:
-            return None
-            
-        # OpenCV 需要 [[[x, y]]] 形状的数组
-        point_array = np.array([[[xy[0], xy[1]]]], dtype=np.float32)
-        
-        # 执行变换
-        transformed_point = cv2.perspectiveTransform(point_array, self.matrix)[0][0]
-        
-        return int(transformed_point[0]), int(transformed_point[1])
+        if self.homography_matrix is None: return None
+        point_arr = np.array([[[xy[0], xy[1]]]], dtype=np.float32)
+        transformed = cv2.perspectiveTransform(point_arr, self.homography_matrix)[0][0]
+        return int(transformed[0]), int(transformed[1])
 
-    def transform_players(self, players: List):
-        """
-        批量给球员添加 pitch_position 属性
-        """
-        from tactix.core.types import Point # 避免循环引用
-        
+    def transform_players(self, players: List[Player]):
+        """批量转换球员坐标"""
         for p in players:
-            # 使用 anchor (脚下点) 进行映射最准确
-            p_map_pos = self.transform_point(p.anchor)
-            
-            if p_map_pos:
-                # 存入 pitch_position
-                p.pitch_position = Point(x=p_map_pos[0], y=p_map_pos[1])
+            # 转换脚底锚点
+            result = self.transform_point(p.anchor)
+            if result:
+                # 这是一个 Hack: 这里的 result 是小地图像素坐标
+                # 我们暂时把它存到 pitch_position 里
+                # (你需要确保 Player 类的 pitch_position 支持 int tuple 或者 Point)
+                from tactix.core.types import Point
+                p.pitch_position = Point(x=result[0], y=result[1])

@@ -3,20 +3,31 @@ Project: Tactix
 File Created: 2026-02-02 11:56:08
 Author: Xingnan Zhu
 File Name: config.py
-Description: xxx...
+Description: 把所有路径、颜色、参数都放在这里。
 """
 
 
-import torch
+from dataclasses import dataclass
 
+@dataclass
 class Config:
-    # 自动检测是否可以使用 Apple Silicon 加速
-    DEVICE = 'mps' if torch.backends.mps.is_available() else 'cpu'
+    # === 路径设置 ===
+    # 你的球场模型 (Model A)
+    PITCH_MODEL_PATH: str = "assets/weights/best.pt"
+    # 你的球员模型 (Model B)
+    PLAYER_MODEL_PATH: str = "assets/weights/yolov8m.pt"
     
-    # 视觉参数
-    TEAM_A_COLOR = (0, 0, 255) # 红色 (BGR)
-    TEAM_B_COLOR = (255, 0, 0) # 蓝色 (BGR)
-    BALL_COLOR = (0, 255, 0)   # 绿色
+    INPUT_VIDEO: str = "assets/samples/InterGoalClip.mp4"
+    OUTPUT_VIDEO: str = "assets/output/Final_V4_Result.mp4"
+    PITCH_TEMPLATE: str = "assets/pitch_bg.png"
+
+    # === 模型参数 ===
+    DEVICE: str = "mps"  # Mac用 'mps', Windows用 'cuda', 只有CPU用 'cpu'
     
-    # 战术参数
-    MAX_PASS_DISTANCE = 300    # 像素距离，超过这个距离不画线
+    # 置信度阈值
+    CONF_PITCH: float = 0.5  # 球场关键点要准一点
+    CONF_PLAYER: float = 0.3 # 球员检测稍微宽容点
+
+    # === 战术参数 ===
+    MAX_PASS_DIST: int = 400
+    BALL_OWNER_DIST: int = 60

@@ -1,0 +1,18 @@
+# ⚠️ 注意：path 必须改成你电脑上实际解压的绝对路径
+# Windows 路径要把 \ 改成 / 或者 \\ 防止转义错误
+path: D:/Tactix_Data/yolo_ready 
+train: images/train
+val: images/valid
+
+# 关键点定义 (不要动)
+kpt_shape: [27, 3]
+
+# 翻转映射 (不要动)
+flip_idx: [
+  0, 1, 2, 3, 4,
+  16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26,
+  5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15
+]
+
+names:
+  0: football-pitch
