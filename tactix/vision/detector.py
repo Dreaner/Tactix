@@ -85,6 +85,7 @@ class Detector:
                     id=-1,
                     rect=rect,
                     class_id=class_id,
+                    confidence=confidence,
                     team=TeamID.UNKNOWN
                 )
                 if class_name == 'referee': player.team = TeamID.REFEREE

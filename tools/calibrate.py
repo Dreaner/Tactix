@@ -55,7 +55,7 @@ def print_menu():
 
 def main():
     # ⚠️ 修改你的视频路径
-    video_path = "assets/samples/InterGoalClip.mp4"
+    video_path = "../assets/samples/InterGoalClip.mp4"
     
     cap = cv2.VideoCapture(video_path)
     ret, frame = cap.read()

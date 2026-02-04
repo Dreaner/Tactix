@@ -65,6 +65,7 @@ class Player:
     id: int
     rect: Tuple[float, float, float, float]  # [x1, y1, x2, y2]
     class_id: int = 0
+    confidence: float = 0.0
     team: TeamID = TeamID.UNKNOWN
     keypoints: Optional[Keypoints] = None
 

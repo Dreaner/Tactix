@@ -15,13 +15,13 @@ import supervision as sv
 # 引入各模块
 from tactix.config import Config
 from tactix.vision.detector import Detector
-from tactix.vision.pose import PitchEstimator
+from tactix.vision.pose import PitchEstimator, MockPitchEstimator
 from tactix.vision.tracker import Tracker
 from tactix.vision.transformer import ViewTransformer
 from tactix.semantics.team import TeamClassifier
 from tactix.tactics.pass_network import PassNetwork
 from tactix.visualization.minimap import MinimapRenderer
-from tactix.core.types import TeamID
+from tactix.core.types import TeamID, Point
 
 class TactixEngine:
     def __init__(self):
@@ -29,7 +29,14 @@ class TactixEngine:
         print("🚀 Initializing Tactix Engine...")
 
         # 1. 初始化感知模块
-        self.pitch_estimator = PitchEstimator(self.cfg.PITCH_MODEL_PATH, self.cfg.DEVICE)
+        # === 修改这里：选择真假美猴王 ===
+        if self.cfg.USE_MOCK_PITCH:
+            # 用假的
+            self.pitch_estimator = MockPitchEstimator(self.cfg.MOCK_KEYPOINTS)
+        else:
+            # 用真的 (如果没有模型文件，这行会报错，正好测试时避开它)
+            self.pitch_estimator = PitchEstimator(self.cfg.PITCH_MODEL_PATH, self.cfg.DEVICE)
+            
         self.detector = Detector(self.cfg.PLAYER_MODEL_PATH, self.cfg.DEVICE, self.cfg.CONF_PLAYER)
         self.tracker = Tracker()
         
@@ -81,7 +88,8 @@ class TactixEngine:
                     # 构造 tracker 需要的 sv.Detections
                     xyxy = np.array([p.rect for p in frame_data.players])
                     class_ids = np.array([p.class_id for p in frame_data.players])
-                    sv_dets = sv.Detections(xyxy=xyxy, class_id=class_ids)
+                    confidences = np.array([p.confidence for p in frame_data.players])
+                    sv_dets = sv.Detections(xyxy=xyxy, class_id=class_ids, confidence=confidences)
                     self.tracker.update(sv_dets, frame_data)
 
                 # 球队分类 (Team Classification)
@@ -101,7 +109,6 @@ class TactixEngine:
                         ball_pt = self.transformer.transform_point(frame_data.ball.center)
                         if ball_pt:
                              # 临时存入 pitch_position (这里假设 Ball 类也有这个字段)
-                             from tactix.core.types import Point
                              frame_data.ball.pitch_position = Point(x=ball_pt[0], y=ball_pt[1])
 
                 # === Stage 4: Visualization (渲染) ===

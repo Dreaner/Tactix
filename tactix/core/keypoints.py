@@ -85,6 +85,21 @@ KEY_POINTS = {
     "R_GA_BOTTOM_CORNER": to_px(105-5.5, 68-24.84),  # 右小禁区-左下角
 }
 
+def get_target_points(keys):
+    """
+    根据名字获取坐标数组
+    """
+    points = []
+    for k in keys:
+        if k not in KEY_POINTS:
+            # 容错：允许反向查找 (比如把 PA_TOP_LEFT 映射到 L_PA_TOP_CORNER)
+            # 这里简单起见，如果找不到就报错
+            available = list(KEY_POINTS.keys())
+            raise ValueError(f"❌ 未知点位 '{k}'。请从以下列表选择:\n{available}")
+        points.append(KEY_POINTS[k])
+    return np.array(points)
+
+
 # ==========================================
 # 5. YOLO V4 模型输出映射 (Model Definition)
 # ==========================================
@@ -124,16 +139,3 @@ YOLO_INDEX_MAP = {
     26: "R_PENALTY_SPOT"
 }
 
-def get_target_points(keys):
-    """
-    根据名字获取坐标数组
-    """
-    points = []
-    for k in keys:
-        if k not in KEY_POINTS:
-            # 容错：允许反向查找 (比如把 PA_TOP_LEFT 映射到 L_PA_TOP_CORNER)
-            # 这里简单起见，如果找不到就报错
-            available = list(KEY_POINTS.keys())
-            raise ValueError(f"❌ 未知点位 '{k}'。请从以下列表选择:\n{available}")
-        points.append(KEY_POINTS[k])
-    return np.array(points)

@@ -10,7 +10,6 @@ Description: xxx...
 """
 Project: Tactix
 File Name: main.py
-Description: V4 Automatic Calibration Pipeline
 """
 
 import cv2
@@ -19,160 +18,130 @@ import supervision as sv
 from tqdm import tqdm
 
 # === 核心模块引入 ===
-from tactix.vision.detector import Detector        # Model B: 找人
-from tactix.vision.pose import PitchEstimator      # Model A: 找球场 (新增!)
+from tactix.vision.detector import Detector
 from tactix.vision.tracker import Tracker
+from tactix.vision.camera import CameraTracker
 from tactix.vision.transformer import ViewTransformer
 from tactix.semantics.team import TeamClassifier
 from tactix.tactics.pass_network import PassNetwork
 from tactix.visualization.minimap import MinimapRenderer
+from tactix.core.keypoints import get_target_points
 from tactix.core.types import TeamID, Point
 
 def main():
     # ==========================================
     # 1. 配置 (Config)
     # ==========================================
-    # 球员检测模型 (Model B)
-    PLAYER_MODEL_PATH = "assets/weights/yolov8m.pt" 
-    # 球场关键点模型 (Model A - 表弟训练的那个 V4 模型)
-    PITCH_MODEL_PATH  = "assets/weights/best.pt"   
-    
+    MODEL_PATH = "assets/weights/football_v1.pt" 
     SOURCE_VIDEO_PATH = "assets/samples/InterGoalClip.mp4"
-    TARGET_VIDEO_PATH = "assets/output/Final_Result_V4.mp4"
-    PITCH_IMAGE_PATH  = "assets/pitch_bg.png"
+    TARGET_VIDEO_PATH = "assets/output/Final_Result.mp4"
+    PITCH_IMAGE_PATH = "assets/pitch_bg.png"
+
+    # 校准数据 (第0帧)
+    CALIBRATION_SOURCE = np.array([(137, 89), (1126, 87), (1045, 398), (138, 222)])
+    CALIBRATION_TARGETS = ['L_PA_TOP_LINE', 'MID_TOP', 'CIRCLE_BOTTOM', 'L_PENALTY_SPOT']
 
     # ==========================================
     # 2. 初始化 (Init)
     # ==========================================
-    print(f"🚀 初始化 Tactix V4 全自动引擎...")
+    print(f"🚀 初始化 Tactix 模块...")
 
-    # A. 视觉感知 (双模型驱动)
-    # 找人模型
-    detector = Detector(model_weights=PLAYER_MODEL_PATH, device='mps', conf_threshold=0.3)
-    # 找场模型 (新增)
-    pitch_estimator = PitchEstimator(model_path=PITCH_MODEL_PATH, device='mps')
-    
+    # A. 视觉感知
+    detector = Detector(model_weights=MODEL_PATH, device='mps', conf_threshold=0.1)
     tracker = Tracker()
+    camera_tracker = CameraTracker(initial_keypoints=CALIBRATION_SOURCE) # 🎥 专门负责跟镜头
 
-    # B. 几何引擎
-    # V4 不需要初始化点，它会等待第一帧的预测结果
-    view_transformer = ViewTransformer() 
-
-    # C. 语义与战术
+    # B. 语义与几何
     team_classifier = TeamClassifier(device='cpu')
     classifier_trained = False
+    
+    # 战术板目标点是固定的，只需要取一次
+    target_points = get_target_points(CALIBRATION_TARGETS)
+
+    # C. 战术分析
     pass_net = PassNetwork(max_pass_dist=400, ball_owner_dist=60)
 
     # D. 渲染器
-    minimap_renderer = MinimapRenderer(bg_image_path=PITCH_IMAGE_PATH)
+    minimap_renderer = MinimapRenderer(bg_image_path=PITCH_IMAGE_PATH) # 🗺️ 专门负责画图
     
-    # 绘图工具
+    # Supervision Annotators
     box_annotator = sv.BoxAnnotator(thickness=2)
     label_annotator = sv.LabelAnnotator(text_scale=0.4)
     ball_annotator = sv.DotAnnotator(color=sv.Color.WHITE, radius=5)
 
-    # 视频流设置
+    # 视频流
     video_info = sv.VideoInfo.from_video_path(SOURCE_VIDEO_PATH)
     frame_generator = sv.get_video_frames_generator(SOURCE_VIDEO_PATH)
 
     # ==========================================
     # 3. 主循环 (Main Loop)
     # ==========================================
-    print(f"▶️ 开始 V4 推理处理...")
+    print(f"▶️ 开始处理...")
     
     with sv.VideoSink(TARGET_VIDEO_PATH, video_info=video_info) as sink:
         for i, frame in tqdm(enumerate(frame_generator), total=video_info.total_frames):
             
-            # ------------------------------------------------------
-            # [Step 1] 🌍 球场感知与校准 (The World)
-            # ------------------------------------------------------
-            # 1.1 运行 Pitch Model，找 27 个关键点
-            kpts_xy, kpts_conf = pitch_estimator.predict(frame)
+            # --- [Step 0] 动态校准 (Camera Update) ---
+            # 1. 让 camera_tracker 算出这一帧的那 4 个点跑哪去了
+            current_points = camera_tracker.update(frame)
             
-            calibration_success = False
-            if kpts_xy is not None:
-                # 1.2 自动更新单应性矩阵 (RANSAC)
-                # 只要这里返回 True，说明矩阵算出来了
-                calibration_success = view_transformer.update_from_model(kpts_xy, kpts_conf)
+            # 2. 用新点重新生成变换矩阵
+            view_transformer = ViewTransformer(
+                source_points=current_points,
+                target_points=target_points
+            )
 
-            # ------------------------------------------------------
-            # [Step 2] 👥 球员检测与跟踪 (The Entities)
-            # ------------------------------------------------------
+            # --- [Step 1] 检测与跟踪 ---
             frame_data = detector.detect(frame, frame_index=i)
             
             if len(frame_data.players) > 0:
+                # 构造 tracker 需要的数据
                 xyxy = np.array([p.rect for p in frame_data.players])
                 class_ids = np.array([p.class_id for p in frame_data.players])
-                # 构造 supervision 对象
-                detections_sv = sv.Detections(
-                    xyxy=xyxy, 
-                    confidence=np.array([0.8]*len(xyxy)), 
-                    class_id=class_ids
-                )
+                confidences = np.array([0.8] * len(frame_data.players))
+                
+                detections_sv = sv.Detections(xyxy=xyxy, confidence=confidences, class_id=class_ids)
                 tracker.update(detections_sv, frame_data)
 
-            # ------------------------------------------------------
-            # [Step 3] 👕 球队分类 (Team Color)
-            # ------------------------------------------------------
+            # --- [Step 2] 球队分类 ---
             valid_players = [p for p in frame_data.players if p.team == TeamID.UNKNOWN]
-            
-            # 前几帧积累数据训练
-            if not classifier_trained and len(valid_players) > 3 and i < 30:
+            if not classifier_trained and len(valid_players) > 5:
                 team_classifier.fit(frame, frame_data.players)
-                if i > 10: classifier_trained = True # 简单粗暴，10帧后就当训练好了
-            
-            # 预测
+                classifier_trained = True
             if classifier_trained:
                 team_classifier.predict(frame, frame_data)
 
-            # ------------------------------------------------------
-            # [Step 4] 📍 坐标映射 (Pixel -> Meter -> Tactic Board)
-            # ------------------------------------------------------
-            # 只有当 Pitch 校准成功时，才进行映射
-            if calibration_success:
-                view_transformer.transform_players(frame_data.players)
-                if frame_data.ball:
-                    ball_pos = view_transformer.transform_point(frame_data.ball.center)
-                    if ball_pos:
-                        frame_data.ball.pitch_position = Point(x=ball_pos[0], y=ball_pos[1])
+            # --- [Step 3] 坐标映射 (2D Mapping) ---
+            view_transformer.transform_players(frame_data.players)
+            if frame_data.ball:
+                ball_pos = view_transformer.transform_point(frame_data.ball.center)
+                if ball_pos:
+                    frame_data.ball.pitch_position = Point(x=ball_pos[0], y=ball_pos[1])
 
-            # ------------------------------------------------------
-            # [Step 5] 🧠 战术分析
-            # ------------------------------------------------------
+            # --- [Step 4] 战术分析 ---
             pass_lines = pass_net.analyze(frame_data)
 
-            # ------------------------------------------------------
-            # [Step 6] 🎨 渲染合成 (Rendering)
-            # ------------------------------------------------------
+            # --- [Step 5] 渲染合成 (Rendering) ---
             annotated_frame = frame.copy()
 
-            # 6.1 [调试] 画出球场关键点 (证明 V4 模型在工作)
-            if kpts_xy is not None:
-                for idx, (x, y) in enumerate(kpts_xy):
-                    conf = kpts_conf[idx]
-                    if conf > 0.5: # 只画可信的点
-                        # 画个青色小圆点
-                        cv2.circle(annotated_frame, (int(x), int(y)), 4, (255, 255, 0), -1)
-                        # (可选) 画 ID 看看是哪个点
-                        # cv2.putText(annotated_frame, str(idx), (int(x), int(y)), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0,0,0), 1)
-
-            # 6.2 画传球线
+            # 5.1 画传球线
             for start, end, opacity in pass_lines:
                 overlay = annotated_frame.copy()
-                cv2.line(overlay, start, end, (0, 255, 255), 2, cv2.LINE_AA)
+                cv2.line(overlay, start, end, (255, 255, 0), 2, cv2.LINE_AA)
                 cv2.addWeighted(overlay, opacity, annotated_frame, 1 - opacity, 0, annotated_frame)
+                cv2.circle(annotated_frame, end, 4, (255, 255, 0), -1)
 
-            # 6.3 画球员框
+            # 5.2 画球员框 (Supervision)
             if len(frame_data.players) > 0:
-                # 颜色逻辑
+                # 映射 TeamID 到颜色索引 (0-4)
                 xyxy = np.array([p.rect for p in frame_data.players])
                 color_indices = []
                 labels = []
                 for p in frame_data.players:
-                    idx = 4 # 灰色(未知)
+                    idx = 4
                     lbl = f"#{p.id}"
-                    if p.team == TeamID.A: idx = 0       # 红
-                    elif p.team == TeamID.B: idx = 1     # 蓝
+                    if p.team == TeamID.A: idx = 0
+                    elif p.team == TeamID.B: idx = 1
                     elif p.team == TeamID.REFEREE: idx = 2; lbl = "Ref"
                     elif p.team == TeamID.GOALKEEPER: idx = 3; lbl = "GK"
                     color_indices.append(idx)
@@ -180,12 +149,10 @@ def main():
                 
                 det_viz = sv.Detections(xyxy=xyxy, class_id=np.array(color_indices))
                 
+                # 定义颜色板
                 palette = sv.ColorPalette(colors=[
-                    sv.Color(230, 57, 70),   # A队: 红
-                    sv.Color(69, 123, 157),  # B队: 蓝
-                    sv.Color(255, 255, 0),   # 裁判: 黄
-                    sv.Color(0, 0, 0),       # 门将: 黑
-                    sv.Color(128, 128, 128)  # 未知: 灰
+                    sv.Color(255, 0, 0), sv.Color(0, 0, 255), 
+                    sv.Color(255, 255, 0), sv.Color(255, 165, 0), sv.Color(128, 128, 128)
                 ])
                 box_annotator.color = palette
                 label_annotator.color = palette
@@ -193,35 +160,33 @@ def main():
                 annotated_frame = box_annotator.annotate(annotated_frame, det_viz)
                 annotated_frame = label_annotator.annotate(annotated_frame, det_viz, labels=labels)
 
-            # 6.4 画球
+            # 5.3 画球
             if frame_data.ball:
                 ball_det = sv.Detections(xyxy=np.array([frame_data.ball.rect]), class_id=np.array([0]))
                 annotated_frame = ball_annotator.annotate(annotated_frame, ball_det)
 
-            # 6.5 画小地图 (如果校准成功)
-            if calibration_success:
-                minimap_img = minimap_renderer.draw(frame_data)
-                
-                # 贴图逻辑
-                target_w = 320
-                scale = target_w / minimap_img.shape[1]
-                target_h = int(minimap_img.shape[0] * scale)
-                minimap_small = cv2.resize(minimap_img, (target_w, target_h))
-                
-                x_off, y_off = 30, 30
-                # 边界检查
-                if y_off + target_h < annotated_frame.shape[0] and x_off + target_w < annotated_frame.shape[1]:
-                    # 加个白边框
-                    annotated_frame[y_off-2:y_off+target_h+2, x_off-2:x_off+target_w+2] = (255,255,255)
-                    annotated_frame[y_off:y_off+target_h, x_off:x_off+target_w] = minimap_small
-            else:
-                # 如果这一帧没算出来矩阵，在左上角写个警告
-                cv2.putText(annotated_frame, "Searching for Pitch...", (30, 50), 
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+            # 5.4 调试：画出光流跟踪点 (绿点)
+            for pt in current_points:
+                cv2.circle(annotated_frame, (int(pt[0]), int(pt[1])), 5, (0, 255, 0), -1)
+
+            # 5.5 画中画：小地图
+            # 这一步直接调用我们封装好的 renderer
+            minimap_img = minimap_renderer.draw(frame_data)
+            
+            # 缩放并贴图
+            target_width = 350
+            scale = target_width / minimap_img.shape[1]
+            target_height = int(minimap_img.shape[0] * scale)
+            minimap_small = cv2.resize(minimap_img, (target_width, target_height))
+            
+            x_off, y_off = 20, 20
+            if y_off + target_height < annotated_frame.shape[0]:
+                annotated_frame[y_off:y_off+target_height, x_off:x_off+target_width] = minimap_small
+                cv2.rectangle(annotated_frame, (x_off, y_off), (x_off+target_width, y_off+target_height), (255, 255, 255), 2)
 
             sink.write_frame(annotated_frame)
 
-    print(f"\n✅ V4 处理完成! 结果保存在: {TARGET_VIDEO_PATH}")
+    print(f"\n✅ 完成! 视频保存至: {TARGET_VIDEO_PATH}")
 
 if __name__ == "__main__":
     main()

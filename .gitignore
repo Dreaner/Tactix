@@ -23,3 +23,8 @@ tactix_train/
 data/
 
 *.pt
+
+
+# 忽略 IDE 文件夹
+.vscode/
+.idea/
