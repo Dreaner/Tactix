@@ -3,10 +3,12 @@ Project: Tactix
 File Created: 2026-02-02 16:34:42
 Author: Xingnan Zhu
 File Name: pass_network.py
-Description: xxx...
+Description:
+    Analyzes player positions and ball ownership to visualize potential
+    passing networks. It calculates distances between players and the ball
+    to determine the ball carrier and draws passing lines to teammates.
 """
 
-# 文件路径: tactix/tactix/tactics/pass_network.py
 
 from typing import List, Tuple, Optional
 

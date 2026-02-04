@@ -4,9 +4,10 @@ File Created: 2026-02-04 16:07:03
 Author: Xingnan Zhu
 File Name: system.py
 Description:
-    核心引擎 (The Brain)。
-    负责把所有模块（感知、逻辑、渲染）串联成一条流水线。
-    已优化：去除冗余绘图逻辑，集成矩阵记忆功能。
+    The core engine of the Tactix system, acting as the central brain.
+    It orchestrates the entire pipeline by integrating perception, logic, and
+    visualization modules. Optimized to remove redundant drawing logic and
+    includes matrix memory functionality for stable tracking.
 """
 
 import cv2

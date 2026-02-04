@@ -3,7 +3,11 @@ Project: Tactix
 File Created: 2026-02-02 12:12:35
 Author: Xingnan Zhu
 File Name: detector.py
-Description: xxx...
+Description:
+    Implements the object detection module using YOLO.
+    It detects players, referees, goalkeepers, and the ball in video frames.
+    Includes logic for filtering false positives, especially for the ball,
+    using dynamic thresholds based on proximity to players.
 """
 
 import numpy as np

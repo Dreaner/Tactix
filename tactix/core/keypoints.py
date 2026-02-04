@@ -3,7 +3,9 @@ Project: Tactix
 File Created: 2026-02-02 23:35:48
 Author: Xingnan Zhu
 File Name: keypoints.py
-Description: xxx...
+Description: Defines standard football pitch dimensions and key coordinate points.
+    It maps physical locations to pixel coordinates and provides a mapping for
+    YOLO model outputs to specific pitch landmarks.
 """
 
 
@@ -138,4 +140,3 @@ YOLO_INDEX_MAP = {
     25: "R_GA_BOTTOM_LINE",
     26: "R_PENALTY_SPOT"
 }
-

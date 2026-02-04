@@ -3,7 +3,10 @@ Project: Tactix
 File Created: 2026-02-02 16:16:28
 Author: Xingnan Zhu
 File Name: geometry.py
-Description: xxx...
+Description:
+    Defines the physical geometry of the football pitch. It maps standard
+    pitch landmarks to their real-world coordinates (in meters), serving as
+    the ground truth for perspective transformation and tactical analysis.
 """
 
 from tactix.core.types import PitchConfig

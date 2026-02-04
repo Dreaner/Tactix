@@ -3,7 +3,10 @@ Project: Tactix
 File Created: 2026-02-02 17:29:25
 Author: Xingnan Zhu
 File Name: train_models.py
-Description: xxx...
+Description:
+    A utility script for training YOLO models using the Roboflow dataset.
+    It handles dataset downloading and initiates the training process on
+    Apple Silicon (MPS) or other configured devices.
 """
 
 

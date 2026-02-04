@@ -3,14 +3,13 @@ Project: Tactix
 File Created: 2026-02-02 11:55:51
 Author: Xingnan Zhu
 File Name: main.py
-Description: xxx...
+Description:
+    The entry point for the Tactix application.
+    It initializes the core modules (Detector, Tracker, Transformer, etc.)
+    and runs the main video processing loop, including calibration,
+    detection, team classification, tactical analysis, and rendering.
 """
 
-
-"""
-Project: Tactix
-File Name: main.py
-"""
 
 import cv2
 import numpy as np
