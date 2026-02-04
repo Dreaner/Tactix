@@ -9,9 +9,11 @@ Description: xxx...
 """
 Camera Movement Tracker based on Optical Flow
 """
+from typing import Optional
+
 import cv2
 import numpy as np
-from typing import Optional, Tuple
+
 
 class CameraTracker:
     def __init__(self, initial_keypoints: np.ndarray):

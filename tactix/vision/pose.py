@@ -21,18 +21,26 @@ class PitchEstimator:
         """
         返回: (keypoints_xy, confidences)
         xy shape: (27, 2)
-        conf shape: (27,)
+        conf shape: (27, )
         """
         # 运行推理 (verbose=False 不打印废话)
         results = self.model(frame, device=self.device, verbose=False)[0]
         
-        if results.keypoints is not None:
+        if results.keypoints is not None and len(results.keypoints.data) > 0:
+            # 新增逻辑：找到面积最大或者是置信度最高的那个框
+            # 这里我们简单粗暴：取 box conf 最高的那个
+            best_idx = 0
+            if results.boxes is not None:
+                # 找到 conf 最大的索引
+                best_idx = results.boxes.conf.argmax().item()
+
             # data shape: (1, 27, 3) -> [x, y, conf]
             kpts = results.keypoints.data[0].cpu().numpy()
             xy = kpts[:, :2]
             conf = kpts[:, 2]
             return xy, conf
         
+        # 如果什么都没看到，返回 None
         return None, None
     
 # === [新增] 假的 AI (测试用) ===

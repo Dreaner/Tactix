@@ -10,8 +10,9 @@ Description:
 
 import cv2
 import numpy as np
-from typing import List, Optional
+
 from tactix.core.types import FrameData, TeamID
+
 
 class MinimapRenderer:
     def __init__(self, bg_image_path: str, width: int = 1559, height: int = 1010):

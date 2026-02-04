@@ -9,7 +9,9 @@ Description: xxx...
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import List, Optional, Tuple, Dict, Any
+
 import numpy as np
+
 
 # ==========================================
 # 1. 基础定义与枚举
@@ -90,7 +92,7 @@ class Player:
     trajectory: List[Point] = field(default_factory=list)
 
     @property
-    def anchor(self) -> Tuple[int, int]:
+    def anchor(self) -> tuple[tuple[Any, ...], ...] | tuple[int, int]:
         """绘图锚点 (优先取脚下)"""
         if self.keypoints and self.keypoints.bottom_center is not None:
             return tuple(self.keypoints.bottom_center.astype(int))

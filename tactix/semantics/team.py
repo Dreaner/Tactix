@@ -6,11 +6,13 @@ File Name: team.py
 Description: xxx...
 """
 
-import cv2
+from typing import List, Tuple, Optional
+
 import numpy as np
 from sklearn.cluster import KMeans
-from typing import List, Tuple, Optional
+
 from tactix.core.types import Player, TeamID, FrameData
+
 
 class TeamClassifier:
     def __init__(self, device='cpu'):
@@ -68,7 +70,8 @@ class TeamClassifier:
                     label = self.kmeans.predict([color])[0]
                     p.team = TeamID.A if label == 0 else TeamID.B
 
-    def _extract_shirt_color(self, frame: np.ndarray, rect: Tuple[float, float, float, float]) -> Optional[np.ndarray]:
+    @staticmethod
+    def _extract_shirt_color(frame: np.ndarray, rect: Tuple[float, float, float, float]) -> Optional[np.ndarray]:
         """
         辅助函数：从边界框中提取球衣颜色。
         技巧：只取上半身中间部分，避开草地、头和短裤。

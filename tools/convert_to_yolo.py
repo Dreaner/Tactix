@@ -32,12 +32,13 @@ Description:
     - We compute intersections of semantic lines (e.g., Side Line Left + Side Line Top = Top-Left Corner).
 """
 
-import os
 import json
-import cv2
-import numpy as np
+import os
 import shutil
+
+import cv2
 from tqdm import tqdm
+
 
 # ==========================================
 # 1. 几何工具函数
@@ -78,7 +79,7 @@ def find_intersection(line1_pts, line2_pts, w, h):
     x = (B2 * C1 - B1 * C2) / det
     y = (A1 * C2 - A2 * C1) / det
     
-    return (x, y)
+    return x, y
 
 def get_circle_center(circle_pts, w, h):
     """简单的重心法求圆心 (对于部分可见的圆弧也适用)"""
@@ -89,7 +90,7 @@ def get_circle_center(circle_pts, w, h):
     ys = [p['y'] * h for p in circle_pts]
     
     # 对于标准中圈，取均值通常就是圆心（或者非常接近）
-    return (sum(xs) / len(xs), sum(ys) / len(ys))
+    return sum(xs) / len(xs), sum(ys) / len(ys)
 
 # ==========================================
 # 2. 语义映射表 (关键点 -> 需要哪两条线)

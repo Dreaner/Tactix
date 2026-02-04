@@ -7,11 +7,11 @@ Description: xxx...
 """
 
 import numpy as np
-from ultralytics import YOLO
 import supervision as sv
-from typing import Dict, Optional, List, Tuple
+from ultralytics import YOLO
 
 from tactix.core.types import Player, Ball, FrameData, TeamID
+
 
 class Detector:
     def __init__(

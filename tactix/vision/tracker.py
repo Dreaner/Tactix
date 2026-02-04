@@ -62,7 +62,8 @@ class Tracker:
             if max_iou > 0.5:
                 frame_data.players[best_match_idx].id = t_id
 
-    def _box_iou_batch(self, box_a, boxes_b):
+    @staticmethod
+    def _box_iou_batch(box_a, boxes_b):
         """
         计算一个框 (box_a) 与 一组框 (boxes_b) 的 IoU
         """

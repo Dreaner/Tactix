@@ -6,10 +6,10 @@ File Name: calibrate.py
 Description: xxx...
 """
 
-import cv2
-import numpy as np
-import sys
 import os
+import sys
+
+import cv2
 
 # 确保能导入 tactix 模块
 sys.path.append(os.getcwd())
@@ -18,7 +18,7 @@ from tactix.core.keypoints import KEY_POINTS
 # 全局变量
 current_click = None # 存储最新点击的坐标
 
-def mouse_callback(event, x, y, flags, param):
+def mouse_callback(event, x, y):
     global current_click
     if event == cv2.EVENT_LBUTTONDOWN:
         current_click = (x, y)
@@ -31,7 +31,7 @@ def print_menu():
     
     # 将字典转为列表方便索引
     keys = list(KEY_POINTS.keys())
-    
+
     # 分类打印，方便查找
     categories = {
         "角落": ["CORNER"],

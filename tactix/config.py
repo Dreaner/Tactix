@@ -13,7 +13,7 @@ from dataclasses import dataclass
 class Config:
     # === 路径设置 ===
     # 你的球场模型 (Model A)
-    PITCH_MODEL_PATH: str = "assets/weights/yolov8m.pt"
+    PITCH_MODEL_PATH: str = "assets/weights/football_pitch.pt"
     # 你的球员模型 (Model B)
     PLAYER_MODEL_PATH: str = "assets/weights/football_v1.pt"
     
@@ -25,7 +25,7 @@ class Config:
     DEVICE: str = "mps"  # Mac用 'mps', Windows用 'cuda', 只有CPU用 'cpu'
     
     # 置信度阈值
-    CONF_PITCH: float = 0.5  # 球场关键点要准一点
+    CONF_PITCH: float = 0.3  # 球场关键点要准一点
     CONF_PLAYER: float = 0.3 # 球员检测稍微宽容点
 
     # === 战术参数 ===
@@ -34,7 +34,7 @@ class Config:
 
 
     # === [新增] 调试模式开关 ===
-    USE_MOCK_PITCH: bool = True  # <--- 打开这个！
+    USE_MOCK_PITCH: bool = False  # <--- 打开这个！
     
     # 这是 InterGoalClip.mp4 的手动校准数据 (你之前 main.py 里的)
     # 格式: [x, y, keypoint_id]

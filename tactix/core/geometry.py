@@ -6,7 +6,6 @@ File Name: geometry.py
 Description: xxx...
 """
 
-import numpy as np
 from tactix.core.types import PitchConfig
 
 # 真实球场尺寸 (米)

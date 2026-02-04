@@ -8,10 +8,12 @@ Description: xxx...
 
 # 文件路径: tactix/tactix/tactics/pass_network.py
 
-import numpy as np
-import cv2
 from typing import List, Tuple, Optional
-from tactix.core.types import FrameData, Player, TeamID
+
+import numpy as np
+
+from tactix.core.types import FrameData, Player
+
 
 class PassNetwork:
     def __init__(self, max_pass_dist=300, ball_owner_dist=50):
