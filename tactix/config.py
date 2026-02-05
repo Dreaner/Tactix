@@ -10,12 +10,41 @@ Description: Central configuration file for paths, colors, and parameters.
 from dataclasses import dataclass, field
 from typing import List, Tuple
 from enum import Enum
+import supervision as sv
 
 class CalibrationMode(Enum):
     AI_ONLY = "ai"             # Pure AI (YOLO)
     MANUAL_FIXED = "manual"    # Pure Manual (Fixed points tracking)
     PANORAMA = "panorama"      # Panorama (Manual Init + Global Motion)
     # HYBRID = "hybrid"        # Future work
+
+@dataclass
+class Colors:
+    """
+    Centralized color palette for the application.
+    Colors are defined as (R, G, B) tuples.
+    """
+    # Entities
+    TEAM_A: Tuple[int, int, int] = (230, 57, 70)    # Red #E63946
+    TEAM_B: Tuple[int, int, int] = (69, 123, 157)   # Blue #457B9D
+    REFEREE: Tuple[int, int, int] = (255, 214, 10)  # Yellow #FFD60A
+    GOALKEEPER: Tuple[int, int, int] = (29, 53, 87) # Dark Blue/Black #1D3557
+    UNKNOWN: Tuple[int, int, int] = (128, 128, 128) # Grey
+    BALL: Tuple[int, int, int] = (255, 165, 0)      # Orange #FFA500
+
+    # UI / Debug
+    KEYPOINT: Tuple[int, int, int] = (0, 255, 255)  # Cyan (BGR: 255, 255, 0) -> RGB: 0, 255, 255
+    TEXT: Tuple[int, int, int] = (255, 255, 255)    # White
+    
+    @staticmethod
+    def to_bgr(rgb: Tuple[int, int, int]) -> Tuple[int, int, int]:
+        """Convert RGB to BGR for OpenCV"""
+        return (rgb[2], rgb[1], rgb[0])
+
+    @staticmethod
+    def to_sv(rgb: Tuple[int, int, int]) -> sv.Color:
+        """Convert RGB to Supervision Color"""
+        return sv.Color(r=rgb[0], g=rgb[1], b=rgb[2])
 
 @dataclass
 class Config:

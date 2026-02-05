@@ -13,6 +13,7 @@ import cv2
 import numpy as np
 from typing import List, Tuple, Optional
 from tactix.core.keypoints import YOLO_INDEX_MAP
+from tactix.config import Colors
 
 class CalibrationUI:
     def __init__(self, video_path: str):
@@ -78,7 +79,8 @@ class CalibrationUI:
         if event == cv2.EVENT_LBUTTONDOWN:
             # 1. Draw a temporary marker to show where user clicked
             temp_img = self.current_frame.copy()
-            cv2.circle(temp_img, (x, y), 5, (0, 0, 255), -1)
+            # Use Keypoint color for temporary marker
+            cv2.circle(temp_img, (x, y), 5, Colors.to_bgr(Colors.KEYPOINT), -1)
             cv2.imshow(self.window_name, temp_img)
             cv2.waitKey(1) # Force UI update
 

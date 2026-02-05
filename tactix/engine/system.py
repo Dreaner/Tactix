@@ -16,7 +16,7 @@ import supervision as sv
 from tqdm import tqdm
 
 # Import modules
-from tactix.config import Config, CalibrationMode
+from tactix.config import Config, CalibrationMode, Colors
 from tactix.core.types import TeamID, Point
 from tactix.semantics.team import TeamClassifier
 from tactix.tactics.pass_network import PassNetwork
@@ -30,7 +30,7 @@ from tactix.vision.tracker import Tracker
 from tactix.vision.transformer import ViewTransformer
 from tactix.visualization.minimap import MinimapRenderer
 from tactix.vision.camera import CameraTracker
-from tactix.export.json_exporter import JsonExporter # Import JsonExporter
+from tactix.export.json_exporter import JsonExporter
 
 class TactixEngine:
     def __init__(self, manual_keypoints=None):
@@ -61,8 +61,6 @@ class TactixEngine:
         self.tracker = Tracker()
         
         # Initialize camera tracker (for smoothing jitter)
-        # Note: PanoramaEstimator has its own internal tracking, but CameraTracker is still useful 
-        # for smoothing or as a fallback for AI mode.
         self.camera_tracker = CameraTracker(smoothing_window=5)
 
         # ==========================================
@@ -95,15 +93,16 @@ class TactixEngine:
         """Initialize Supervision annotators"""
         self.box_annotator = sv.BoxAnnotator(thickness=2)
         self.label_annotator = sv.LabelAnnotator(text_scale=0.4, text_padding=4)
-        self.ball_annotator = sv.DotAnnotator(color=sv.Color.WHITE, radius=5)
+        self.ball_annotator = sv.DotAnnotator(color=Colors.to_sv(Colors.BALL), radius=5)
 
         # Define color palette (corresponding to class_id 0-4)
+        # Order: Team A, Team B, Referee, Goalkeeper, Unknown
         self.palette = sv.ColorPalette(colors=[
-            sv.Color(230, 57, 70),   # 0: Team A (Red)
-            sv.Color(69, 123, 157),  # 1: Team B (Blue)
-            sv.Color(255, 255, 0),   # 2: Referee (Yellow)
-            sv.Color(0, 0, 0),       # 3: Goalkeeper (Black)
-            sv.Color(128, 128, 128)  # 4: Unknown (Grey)
+            Colors.to_sv(Colors.TEAM_A),
+            Colors.to_sv(Colors.TEAM_B),
+            Colors.to_sv(Colors.REFEREE),
+            Colors.to_sv(Colors.GOALKEEPER),
+            Colors.to_sv(Colors.UNKNOWN)
         ])
 
     def run(self):
@@ -129,8 +128,6 @@ class TactixEngine:
                 active_keypoints = None
                 
                 # 2. Refine Keypoints (Smoothing / Fallback)
-                # If using Panorama or Manual, the estimator already does tracking.
-                # If using AI, we might need CameraTracker for smoothing.
                 
                 if self.cfg.CALIBRATION_MODE == CalibrationMode.AI_ONLY:
                     # AI Mode Logic: Trust AI if good, else use Optical Flow fallback
@@ -182,7 +179,6 @@ class TactixEngine:
                     self.transformer.transform_players(frame_data.players)
                     
                     # 🔥 Calculate velocity vectors
-                    # Must be called after transform_players because it needs pitch_position
                     self.tracker.update_velocity(frame_data)
 
                     if frame_data.ball:
@@ -206,15 +202,11 @@ class TactixEngine:
                 heatmap_overlay = None
                 if has_matrix:
                     self.heatmap_generator.update(frame_data)
-                    # Generating every frame might be wasteful, can be done every N frames
-                    # Here we generate every frame for demonstration
                     heatmap_overlay = self.heatmap_generator.generate_overlay()
 
                 # ==========================================
                 # === Stage 5: Visualization (Rendering) ===
                 # ==========================================
-                # Delegate all drawing logic to _draw_frame to avoid code duplication
-                # Note: Passing active_keypoints for debug display
                 canvas = self._draw_frame(frame, frame_data, active_keypoints, has_matrix, pass_lines, voronoi_overlay, heatmap_overlay)
 
                 # Write to video
@@ -235,30 +227,23 @@ class TactixEngine:
     def _draw_frame(self, frame, frame_data, pitch_keypoints, has_matrix, pass_lines, voronoi_overlay, heatmap_overlay):
         """
         Handles all drawing logic for the current frame.
-        Args:
-            has_matrix: Whether a projection matrix is currently available (determines if minimap is drawn)
-            pass_lines: List of passing lines from network analysis
-            voronoi_overlay: Voronoi layer
-            heatmap_overlay: Heatmap layer
         """
         annotated_frame = frame.copy()
 
-        # 1. Draw Pitch Keypoints (Debug, can be commented out)
+        # 1. Draw Pitch Keypoints (Debug)
         # if pitch_keypoints is not None:
         #     for x, y in pitch_keypoints:
-        #         # Yellow dot
-        #         cv2.circle(annotated_frame, (int(x), int(y)), 3, (0, 255, 255), -1)
+        #         cv2.circle(annotated_frame, (int(x), int(y)), 3, Colors.to_bgr(Colors.KEYPOINT), -1)
 
         # 2. Draw Passing Network
-        # Draw lines before players so they appear underneath
         for start, end, opacity in pass_lines:
             overlay = annotated_frame.copy()
             # Draw line
-            cv2.line(overlay, start, end, (255, 255, 0), 2, cv2.LINE_AA)
+            cv2.line(overlay, start, end, Colors.to_bgr(Colors.KEYPOINT), 2, cv2.LINE_AA)
             # Blend layer for transparency
             cv2.addWeighted(overlay, opacity, annotated_frame, 1 - opacity, 0, annotated_frame)
             # Draw end dot
-            cv2.circle(annotated_frame, end, 4, (255, 255, 0), -1)
+            cv2.circle(annotated_frame, end, 4, Colors.to_bgr(Colors.KEYPOINT), -1)
 
         # 3. Draw Players (Box + Label)
         if len(frame_data.players) > 0:
@@ -316,10 +301,10 @@ class TactixEngine:
                 annotated_frame[20:20+target_h, 20:20+target_w] = minimap_small
 
                 # Add a refined white border (Thickness=1)
-                cv2.rectangle(annotated_frame, (20, 20), (20+target_w, 20+target_h), (255, 255, 255), 1)
+                cv2.rectangle(annotated_frame, (20, 20), (20+target_w, 20+target_h), Colors.to_bgr(Colors.TEXT), 1)
         else:
             # If no matrix at all (System initializing)
             cv2.putText(annotated_frame, "Seeking Pitch...", (20, 50),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 255), 2)
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.8, Colors.to_bgr(Colors.KEYPOINT), 2)
 
         return annotated_frame
