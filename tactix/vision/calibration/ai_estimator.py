@@ -1,8 +1,8 @@
 """
 Project: Tactix
-File Created: 2026-02-02 16:19:19
+File Created: 2026-02-05 17:42:12
 Author: Xingnan Zhu
-File Name: pose.py
+File Name: ai_estimator.py
 Description:
     Implements the pitch keypoint estimation using a YOLO-Pose model.
     It detects 27 standard keypoints on the football pitch to establish
@@ -12,11 +12,11 @@ Description:
 from ultralytics import YOLO
 import numpy as np
 from typing import Tuple, Optional, List
+from tactix.vision.calibration.base import BasePitchEstimator
 
-
-class PitchEstimator:
+class AIPitchEstimator(BasePitchEstimator):
     def __init__(self, model_path: str, device: str = 'mps'):
-        print(f"🏟️ Loading Pitch Model: {model_path}...")
+        print(f"🏟️ Loading AI Pitch Model: {model_path}...")
         self.model = YOLO(model_path)
         self.device = device
 
@@ -46,8 +46,10 @@ class PitchEstimator:
         # If nothing detected, return None
         return None, None
     
-# === [New] Mock AI (For Testing) ===
-class MockPitchEstimator:
+class MockPitchEstimator(BasePitchEstimator):
+    """
+    A dummy estimator that returns fixed coordinates. Useful for testing without loading heavy models.
+    """
     def __init__(self, mock_points: List[Tuple[int, int, int]]):
         print(f"⚠️ Warning: Using Mock Pitch Estimator (Fixed Coordinates)")
         self.mock_points = mock_points

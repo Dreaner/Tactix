@@ -16,20 +16,20 @@ import supervision as sv
 from tqdm import tqdm
 
 # Import modules
-from tactix.config import Config
+from tactix.config import Config, CalibrationMode
 from tactix.core.types import TeamID, Point
 from tactix.semantics.team import TeamClassifier
 from tactix.tactics.pass_network import PassNetwork
 from tactix.tactics.space_control import SpaceControl
 from tactix.tactics.heatmap import HeatmapGenerator
 from tactix.vision.detector import Detector
-from tactix.vision.pose import PitchEstimator, MockPitchEstimator
-from tactix.vision.manuel_calibration import ManualPitchEstimator
+from tactix.vision.calibration.ai_estimator import AIPitchEstimator
+from tactix.vision.calibration.manual_estimator import ManualPitchEstimator
+from tactix.vision.calibration.panorama_estimator import PanoramaPitchEstimator
 from tactix.vision.tracker import Tracker
 from tactix.vision.transformer import ViewTransformer
 from tactix.visualization.minimap import MinimapRenderer
 from tactix.vision.camera import CameraTracker
-
 
 class TactixEngine:
     def __init__(self, manual_keypoints=None):
@@ -39,22 +39,29 @@ class TactixEngine:
         # If manual keypoints are provided (from interactive mode), override config
         if manual_keypoints:
             self.cfg.MANUAL_KEYPOINTS = manual_keypoints
-            self.cfg.USE_MOCK_PITCH = True
+            # Default to Panorama mode if manual points are provided, as it's more robust for moving cameras
+            self.cfg.CALIBRATION_MODE = CalibrationMode.PANORAMA
 
         # ==========================================
         # 1. Initialize Perception Modules
         # ==========================================
-        # Decide whether to use real AI or Mock data based on config
-        if self.cfg.USE_MOCK_PITCH:
-            # Use manual calibration (with optical flow tracking)
+        # Select Pitch Estimator based on Calibration Mode
+        if self.cfg.CALIBRATION_MODE == CalibrationMode.MANUAL_FIXED:
+            print("🔧 Mode: Manual Fixed Calibration")
             self.pitch_estimator = ManualPitchEstimator(self.cfg.MANUAL_KEYPOINTS)
+        elif self.cfg.CALIBRATION_MODE == CalibrationMode.PANORAMA:
+            print("🌐 Mode: Panorama Calibration")
+            self.pitch_estimator = PanoramaPitchEstimator(self.cfg.MANUAL_KEYPOINTS)
         else:
-            self.pitch_estimator = PitchEstimator(self.cfg.PITCH_MODEL_PATH, self.cfg.DEVICE)
+            print("🤖 Mode: AI Auto Calibration")
+            self.pitch_estimator = AIPitchEstimator(self.cfg.PITCH_MODEL_PATH, self.cfg.DEVICE)
 
         self.detector = Detector(self.cfg.PLAYER_MODEL_PATH, self.cfg.DEVICE, self.cfg.CONF_PLAYER)
         self.tracker = Tracker()
         
         # Initialize camera tracker (for smoothing jitter)
+        # Note: PanoramaEstimator has its own internal tracking, but CameraTracker is still useful 
+        # for smoothing or as a fallback for AI mode.
         self.camera_tracker = CameraTracker(smoothing_window=5)
 
         # ==========================================
@@ -107,27 +114,30 @@ class TactixEngine:
                 # ==========================================
                 # === Stage 1: Pitch Calibration (World View) ===
                 # ==========================================
-                # 1. Try to detect keypoints using YOLO
+                # 1. Predict keypoints (AI, Manual, or Panorama)
                 kpts_xy, kpts_conf = self.pitch_estimator.predict(frame)
                 
                 final_kpts = None
                 
-                # 2. Decision Logic: Trust YOLO or Optical Flow?
-                # If YOLO detects enough points (e.g., > 3), consider it a "strong calibration"
-                if kpts_xy is not None and len(kpts_xy) >= 4:
-                    # Force reset the tracker to the current YOLO result
-                    self.camera_tracker.reset(kpts_xy, frame)
-                    final_kpts = kpts_xy
+                # 2. Refine Keypoints (Smoothing / Fallback)
+                # If using Panorama or Manual, the estimator already does tracking.
+                # If using AI, we might need CameraTracker for smoothing.
+                
+                if self.cfg.CALIBRATION_MODE == CalibrationMode.AI_ONLY:
+                    # AI Mode Logic: Trust AI if good, else use Optical Flow fallback
+                    if kpts_xy is not None and len(kpts_xy) >= 4:
+                        self.camera_tracker.reset(kpts_xy, frame)
+                        final_kpts = kpts_xy
+                    else:
+                        tracked_kpts = self.camera_tracker.update(frame)
+                        if tracked_kpts is not None:
+                            final_kpts = tracked_kpts
+                            kpts_conf = np.ones(len(final_kpts))
                 else:
-                    # If YOLO fails or detects too few points, try to "predict" using Optical Flow
-                    tracked_kpts = self.camera_tracker.update(frame)
-                    if tracked_kpts is not None:
-                        final_kpts = tracked_kpts
-                        # Fake confidence to make Transformer accept it
-                        kpts_conf = np.ones(len(final_kpts)) 
+                    # Manual/Panorama Mode Logic: Trust the estimator directly
+                    final_kpts = kpts_xy
 
                 # Update matrix (returns True as long as a matrix is available, new or old)
-                # Note: We pass final_kpts to the transformer
                 has_matrix = False
                 if final_kpts is not None:
                     has_matrix = self.transformer.update(final_kpts, kpts_conf, self.cfg.CONF_PITCH)
@@ -215,10 +225,10 @@ class TactixEngine:
         annotated_frame = frame.copy()
 
         # 1. Draw Pitch Keypoints (Debug, can be commented out)
-        if kpts_xy is not None:
-            for x, y in kpts_xy:
-                # Yellow dot
-                cv2.circle(annotated_frame, (int(x), int(y)), 3, (0, 255, 255), -1)
+        # if kpts_xy is not None:
+        #     for x, y in kpts_xy:
+        #         # Yellow dot
+        #         cv2.circle(annotated_frame, (int(x), int(y)), 3, (0, 255, 255), -1)
 
         # 2. Draw Passing Network
         # Draw lines before players so they appear underneath
