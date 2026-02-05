@@ -3,47 +3,53 @@ Project: Tactix
 File Created: 2026-02-02 11:56:08
 Author: Xingnan Zhu
 File Name: config.py
-Description: 把所有路径、颜色、参数都放在这里。
+Description: Central configuration file for paths, colors, and parameters.
 """
 
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import List, Tuple
 
 @dataclass
 class Config:
-    # === 路径设置 ===
-    # 你的球场模型 (Model A)
+    # === Path Settings ===
+    # Pitch Model (Model A)
     PITCH_MODEL_PATH: str = "assets/weights/football_pitch.pt"
-    # 你的球员模型 (Model B)
+    # Player Model (Model B)
     PLAYER_MODEL_PATH: str = "assets/weights/football_v1.pt"
     
     INPUT_VIDEO: str = "assets/samples/InterGoalClip.mp4"
     OUTPUT_VIDEO: str = "assets/output/Final_V4_Result.mp4"
     PITCH_TEMPLATE: str = "assets/pitch_bg.png"
 
-    # === 模型参数 ===
-    DEVICE: str = "mps"  # Mac用 'mps', Windows用 'cuda', 只有CPU用 'cpu'
+    # === Model Parameters ===
+    DEVICE: str = "mps"  # 'mps' for Mac, 'cuda' for Windows/Linux, 'cpu' for CPU only
     
-    # 置信度阈值
-    CONF_PITCH: float = 0.3  # 球场关键点要准一点
-    CONF_PLAYER: float = 0.3 # 球员检测稍微宽容点
+    # Confidence Thresholds
+    CONF_PITCH: float = 0.3  # Stricter for pitch keypoints
+    CONF_PLAYER: float = 0.3 # Slightly lenient for players
 
-    # === 战术参数 ===
+    # === Tactical Parameters ===
     MAX_PASS_DIST: int = 400
     BALL_OWNER_DIST: int = 60
 
 
-    # === [新增] 校准模式开关 ===
-    # USE_MOCK_PITCH: 如果为 True，将忽略 AI 模型，强制使用 MANUAL_KEYPOINTS 并启用光流跟踪
-    USE_MOCK_PITCH: bool = True  # <--- 打开这个以启用手动校准！
+    # === [New] Calibration Mode Switches ===
     
-    # 这是 InterGoalClip.mp4 的手动校准数据 (第0帧)
-    # 格式: [x, y, keypoint_id]
-    # ID 来自 keypoints.py 的 YOLO_INDEX_MAP:
-    # 9=L_PA_TOP_LINE, 3=MID_TOP, 2=CIRCLE_BOTTOM, 15=L_PENALTY_SPOT
-    MANUAL_KEYPOINTS = [
+    # INTERACTIVE_MODE: If True, launches the UI to let user click points at startup
+    INTERACTIVE_MODE: bool = True
+
+    # USE_MOCK_PITCH: If True, uses MANUAL_KEYPOINTS (either hardcoded or from interactive mode)
+    # instead of the AI model.
+    USE_MOCK_PITCH: bool = True
+
+    # Manual calibration data (Frame 0)
+    # Format: [x, y, keypoint_id]
+    # ID comes from keypoints.py YOLO_INDEX_MAP
+    # Default values (can be overwritten by Interactive Mode)
+    MANUAL_KEYPOINTS: List[Tuple[int, int, int]] = field(default_factory=lambda: [
         (137, 89, 9),    # L_PA_TOP_LINE
         (1126, 87, 3),   # MID_TOP
         (1045, 398, 2),  # CIRCLE_BOTTOM
         (138, 222, 15)   # L_PENALTY_SPOT
-    ]
+    ])

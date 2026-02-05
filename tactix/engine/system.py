@@ -32,9 +32,14 @@ from tactix.vision.camera import CameraTracker
 
 
 class TactixEngine:
-    def __init__(self):
+    def __init__(self, manual_keypoints=None):
         self.cfg = Config()
         print("🚀 Initializing Tactix Engine...")
+        
+        # If manual keypoints are provided (from interactive mode), override config
+        if manual_keypoints:
+            self.cfg.MANUAL_KEYPOINTS = manual_keypoints
+            self.cfg.USE_MOCK_PITCH = True
 
         # ==========================================
         # 1. Initialize Perception Modules

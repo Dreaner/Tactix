@@ -63,8 +63,8 @@ KEY_POINTS = {
     # ----------------------------------------
     # Penalty Area (Width 40.32m, Distance from sideline 13.84m)
     "L_PA_TOP_LINE":    to_px(0, 13.84),        # Top line intersection with goal line
-    "L_PA_TOP_CORNER":  to_px(16.5, 13.84),     # 🔥 Left PA Top-Right Corner (Common!)
-    "L_PA_BOTTOM_CORNER":to_px(16.5, 68-13.84), # 🔥 Left PA Bottom-Right Corner (Common!)
+    "L_PA_TOP_CORNER":  to_px(16.5, 13.84),     # Left PA Top-Right Corner (Common!)
+    "L_PA_BOTTOM_CORNER":to_px(16.5, 68-13.84), # Left PA Bottom-Right Corner (Common!)
     "L_PA_BOTTOM_LINE": to_px(0, 68-13.84),     # Bottom line intersection with goal line
     "L_PENALTY_SPOT":   to_px(11.0, 34.0),      # Left Penalty Spot
 
@@ -77,8 +77,8 @@ KEY_POINTS = {
     # ----------------------------------------
     # Calculation Logic: X = 105 - 16.5 = 88.5
     "R_PA_TOP_LINE":    to_px(LENGTH_M, 13.84),      # Top line intersection with right goal line
-    "R_PA_TOP_CORNER":  to_px(105-16.5, 13.84),      # 🔥 Right PA Top-Left Corner (Common!)
-    "R_PA_BOTTOM_CORNER":to_px(105-16.5, 68-13.84),  # 🔥 Right PA Bottom-Left Corner (Common!)
+    "R_PA_TOP_CORNER":  to_px(105-16.5, 13.84),      # Right PA Top-Left Corner (Common!)
+    "R_PA_BOTTOM_CORNER":to_px(105-16.5, 68-13.84),  # Right PA Bottom-Left Corner (Common!)
     "R_PA_BOTTOM_LINE": to_px(LENGTH_M, 68-13.84),   # Bottom line intersection with right goal line
     "R_PENALTY_SPOT":   to_px(105-11.0, 34.0),       # Right Penalty Spot
 
