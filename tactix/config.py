@@ -26,6 +26,10 @@ class Config:
     INPUT_VIDEO: str = "assets/samples/InterGoalClip.mp4"
     OUTPUT_VIDEO: str = "assets/output/Final_V4_Result.mp4"
     PITCH_TEMPLATE: str = "assets/pitch_bg.png"
+    
+    # Export Settings
+    EXPORT_DATA: bool = True
+    OUTPUT_JSON: str = "assets/output/tracking_data.json"
 
     # === Model Parameters ===
     DEVICE: str = "mps"

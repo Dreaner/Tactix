@@ -30,6 +30,7 @@ from tactix.vision.tracker import Tracker
 from tactix.vision.transformer import ViewTransformer
 from tactix.visualization.minimap import MinimapRenderer
 from tactix.vision.camera import CameraTracker
+from tactix.export.json_exporter import JsonExporter # Import JsonExporter
 
 class TactixEngine:
     def __init__(self, manual_keypoints=None):
@@ -78,6 +79,14 @@ class TactixEngine:
         # ==========================================
         self.minimap_renderer = MinimapRenderer(self.cfg.PITCH_TEMPLATE)
         self._init_annotators()
+        
+        # ==========================================
+        # 4. Initialize Export Module
+        # ==========================================
+        self.exporter = None
+        if self.cfg.EXPORT_DATA:
+            print(f"💾 Data Export Enabled: {self.cfg.OUTPUT_JSON}")
+            self.exporter = JsonExporter(self.cfg.OUTPUT_JSON)
 
         # State flags
         self.classifier_trained = False
@@ -115,9 +124,9 @@ class TactixEngine:
                 # === Stage 1: Pitch Calibration (World View) ===
                 # ==========================================
                 # 1. Predict keypoints (AI, Manual, or Panorama)
-                kpts_xy, kpts_conf = self.pitch_estimator.predict(frame)
+                pitch_keypoints, keypoint_confidences = self.pitch_estimator.predict(frame)
                 
-                final_kpts = None
+                active_keypoints = None
                 
                 # 2. Refine Keypoints (Smoothing / Fallback)
                 # If using Panorama or Manual, the estimator already does tracking.
@@ -125,22 +134,22 @@ class TactixEngine:
                 
                 if self.cfg.CALIBRATION_MODE == CalibrationMode.AI_ONLY:
                     # AI Mode Logic: Trust AI if good, else use Optical Flow fallback
-                    if kpts_xy is not None and len(kpts_xy) >= 4:
-                        self.camera_tracker.reset(kpts_xy, frame)
-                        final_kpts = kpts_xy
+                    if pitch_keypoints is not None and len(pitch_keypoints) >= 4:
+                        self.camera_tracker.reset(pitch_keypoints, frame)
+                        active_keypoints = pitch_keypoints
                     else:
-                        tracked_kpts = self.camera_tracker.update(frame)
-                        if tracked_kpts is not None:
-                            final_kpts = tracked_kpts
-                            kpts_conf = np.ones(len(final_kpts))
+                        tracked_keypoints = self.camera_tracker.update(frame)
+                        if tracked_keypoints is not None:
+                            active_keypoints = tracked_keypoints
+                            keypoint_confidences = np.ones(len(active_keypoints))
                 else:
                     # Manual/Panorama Mode Logic: Trust the estimator directly
-                    final_kpts = kpts_xy
+                    active_keypoints = pitch_keypoints
 
                 # Update matrix (returns True as long as a matrix is available, new or old)
                 has_matrix = False
-                if final_kpts is not None:
-                    has_matrix = self.transformer.update(final_kpts, kpts_conf, self.cfg.CONF_PITCH)
+                if active_keypoints is not None:
+                    has_matrix = self.transformer.update(active_keypoints, keypoint_confidences, self.cfg.CONF_PITCH)
 
                 # ==========================================
                 # === Stage 2: Player Detection (Entities) ===
@@ -205,15 +214,25 @@ class TactixEngine:
                 # === Stage 5: Visualization (Rendering) ===
                 # ==========================================
                 # Delegate all drawing logic to _draw_frame to avoid code duplication
-                # Note: Passing final_kpts for debug display
-                canvas = self._draw_frame(frame, frame_data, final_kpts, has_matrix, pass_lines, voronoi_overlay, heatmap_overlay)
+                # Note: Passing active_keypoints for debug display
+                canvas = self._draw_frame(frame, frame_data, active_keypoints, has_matrix, pass_lines, voronoi_overlay, heatmap_overlay)
 
                 # Write to video
                 sink.write_frame(canvas)
+                
+                # ==========================================
+                # === Stage 6: Data Export ===
+                # ==========================================
+                if self.exporter:
+                    self.exporter.add_frame(frame_data)
+
+        # Save exported data
+        if self.exporter:
+            self.exporter.save()
 
         print(f"✅ Done! Saved to {self.cfg.OUTPUT_VIDEO}")
 
-    def _draw_frame(self, frame, frame_data, kpts_xy, has_matrix, pass_lines, voronoi_overlay, heatmap_overlay):
+    def _draw_frame(self, frame, frame_data, pitch_keypoints, has_matrix, pass_lines, voronoi_overlay, heatmap_overlay):
         """
         Handles all drawing logic for the current frame.
         Args:
@@ -225,8 +244,8 @@ class TactixEngine:
         annotated_frame = frame.copy()
 
         # 1. Draw Pitch Keypoints (Debug, can be commented out)
-        # if kpts_xy is not None:
-        #     for x, y in kpts_xy:
+        # if pitch_keypoints is not None:
+        #     for x, y in pitch_keypoints:
         #         # Yellow dot
         #         cv2.circle(annotated_frame, (int(x), int(y)), 3, (0, 255, 255), -1)
 
