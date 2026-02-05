@@ -3,7 +3,10 @@ Project: Tactix
 File Created: 2026-02-02 23:22:57
 Author: Xingnan Zhu
 File Name: transformer.py
-Description: xxx...
+Description:
+    Handles the perspective transformation (Homography) between the video frame
+    and the 2D tactical board. It maps detected keypoints to their real-world
+    counterparts to compute the transformation matrix.
 """
 
 import cv2
@@ -21,11 +24,11 @@ class ViewTransformer:
 
     def update(self, keypoints: np.ndarray, confs: np.ndarray, threshold: float = 0.5) -> bool:
         """
-        尝试更新矩阵。
-        返回: bool (当前是否有可用的矩阵，无论是新的还是旧的)
+        Attempts to update the homography matrix.
+        Returns: bool (Whether a valid matrix is available, new or old)
         """
         if keypoints is None: 
-            # 如果没点，看看有没有老本可以吃
+            # If no points, check if we have an old matrix to fallback on
             return self.homography_matrix is not None
 
         src_pts = [] 
@@ -42,56 +45,58 @@ class ViewTransformer:
                 target_y = int(world_y * self.scale_y)
                 dst_pts.append([target_x, target_y])
 
-        # 🔥 核心修改：如果点不够，不报错，不清空，直接沿用上一帧的矩阵
+        # 🔥 Core modification: If not enough points, don't crash, don't clear, just use the old matrix
         if len(src_pts) < 4:
             return self.homography_matrix is not None
 
         src_arr = np.array(src_pts).reshape(-1, 1, 2)
         dst_arr = np.array(dst_pts).reshape(-1, 1, 2)
 
-        # RANSAC 计算
+        # RANSAC Calculation
 
         h, mask = cv2.findHomography(src_arr, dst_arr, cv2.RANSAC, 5.0)
         
         if h is not None:
-             # 二次校验
+             # Secondary validation
              inliers = np.sum(mask)
              if inliers >= 4:
-                 self.homography_matrix = h # 更新为新的
+                 self.homography_matrix = h # Update to new matrix
                  return True
         
-        # 如果新算的不好，也继续用旧的
+        # If new calculation is bad, continue using old one
         return self.homography_matrix is not None
 
     def transform_point(self, xy: Tuple[float, float]) -> Optional[Tuple[int, int]]:
-        # 只要有矩阵（哪怕是旧的），我就给你算！
+        # As long as there is a matrix (even an old one), calculate it!
         if self.homography_matrix is None: return None
         
         point_arr = np.array([[[xy[0], xy[1]]]], dtype=np.float32)
         try:
             transformed = cv2.perspectiveTransform(point_arr, self.homography_matrix)[0][0]
             
-            # 🔥 额外保护：检查坐标是否飞出地球了
-            # 如果算出来坐标是负数或者巨大无比，说明矩阵有问题，返回 None 避免画崩
+            # 🔥 Extra protection: Check if coordinates flew off the earth
+            # If calculated coordinates are negative or huge, matrix is bad, return None to avoid drawing errors
             tx, ty = int(transformed[0]), int(transformed[1])
-            if -500 < tx < 3000 and -500 < ty < 2000: # 宽容的边界
+            if -500 < tx < 3000 and -500 < ty < 2000: # Tolerant boundaries
                 return tx, ty
-        except Exception:
-            pass
+        except cv2.error as e:
+            print(f"OpenCV Transformation Error: {e}")
+        except Exception as e:
+            print(f"Unexpected Transformation Error: {e}")
             
         return None
 
     def transform_players(self, players: List[Player]):
         for p in players:
-            # 使用脚底坐标 (bottom_center) 转换更准，如果没有就用中心点
-            # 假设 Player.rect 是 [x1, y1, x2, y2]
+            # Use bottom_center (feet) for more accurate transformation, otherwise use center
+            # Assuming Player.rect is [x1, y1, x2, y2]
             # anchor_x = (x1 + x2) / 2
-            # anchor_y = y2 (脚底)
+            # anchor_y = y2 (feet)
             result = self.transform_point(p.anchor)
             
             if result:
-                # 这种赋值方式取决于你的 types.py 里的 Point 定义
-                # 如果 p.pitch_position 是 Point 类型：
+                # Assignment depends on Point definition in types.py
+                # If p.pitch_position is Point type:
                 from tactix.core.types import Point
                 p.pitch_position = Point(x=result[0], y=result[1])
             else:

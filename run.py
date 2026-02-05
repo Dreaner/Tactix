@@ -3,7 +3,8 @@ Project: Tactix
 File Created: 2026-02-04 16:14:41
 Author: Xingnan Zhu
 File Name: run.py
-Description: 主程序入口
+Description:
+    The entry point for the Tactix application.
 """
 
 

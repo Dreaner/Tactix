@@ -3,7 +3,10 @@ Project: Tactix
 File Created: 2026-02-02 16:19:19
 Author: Xingnan Zhu
 File Name: pose.py
-Description: xxx...
+Description:
+    Implements the pitch keypoint estimation using a YOLO-Pose model.
+    It detects 27 standard keypoints on the football pitch to establish
+    the correspondence between the video frame and the 2D tactical board.
 """
 
 from ultralytics import YOLO
@@ -19,19 +22,19 @@ class PitchEstimator:
 
     def predict(self, frame: np.ndarray) -> Tuple[Optional[np.ndarray], Optional[np.ndarray]]:
         """
-        返回: (keypoints_xy, confidences)
+        Returns: (keypoints_xy, confidences)
         xy shape: (27, 2)
         conf shape: (27, )
         """
-        # 运行推理 (verbose=False 不打印废话)
+        # Run inference (verbose=False suppresses logs)
         results = self.model(frame, device=self.device, verbose=False)[0]
         
         if results.keypoints is not None and len(results.keypoints.data) > 0:
-            # 新增逻辑：找到面积最大或者是置信度最高的那个框
-            # 这里我们简单粗暴：取 box conf 最高的那个
+            # Logic: Find the box with the largest area or highest confidence
+            # Here we simply take the one with the highest box confidence
             best_idx = 0
             if results.boxes is not None:
-                # 找到 conf 最大的索引
+                # Find index of max confidence
                 best_idx = results.boxes.conf.argmax().item()
 
             # data shape: (1, 27, 3) -> [x, y, conf]
@@ -40,26 +43,26 @@ class PitchEstimator:
             conf = kpts[:, 2]
             return xy, conf
         
-        # 如果什么都没看到，返回 None
+        # If nothing detected, return None
         return None, None
     
-# === [新增] 假的 AI (测试用) ===
+# === [New] Mock AI (For Testing) ===
 class MockPitchEstimator:
     def __init__(self, mock_points: List[Tuple[int, int, int]]):
         print(f"⚠️ Warning: Using Mock Pitch Estimator (Fixed Coordinates)")
         self.mock_points = mock_points
         
-        # 构造一个假的输出数组 (27个点，全是0)
-        # 27 是因为我们的 V4 标准定义了 27 个点
+        # Construct a dummy output array (27 points, all 0)
+        # 27 because our V4 standard defines 27 points
         self.dummy_xy = np.zeros((27, 2), dtype=float)
         self.dummy_conf = np.zeros(27, dtype=float)
         
-        # 把那 4 个固定点填进去
+        # Fill in the 4 fixed points
         for x, y, idx in mock_points:
             if idx < 27:
                 self.dummy_xy[idx] = [x, y]
-                self.dummy_conf[idx] = 1.0 # 置信度拉满
+                self.dummy_conf[idx] = 1.0 # Full confidence
 
     def predict(self, frame: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
-        # 无论给什么图片，我都返回那 4 个点
+        # Return the 4 points regardless of the input frame
         return self.dummy_xy, self.dummy_conf

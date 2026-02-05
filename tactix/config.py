@@ -33,14 +33,15 @@ class Config:
     BALL_OWNER_DIST: int = 60
 
 
-    # === [新增] 调试模式开关 ===
-    USE_MOCK_PITCH: bool = False  # <--- 打开这个！
+    # === [新增] 校准模式开关 ===
+    # USE_MOCK_PITCH: 如果为 True，将忽略 AI 模型，强制使用 MANUAL_KEYPOINTS 并启用光流跟踪
+    USE_MOCK_PITCH: bool = True  # <--- 打开这个以启用手动校准！
     
-    # 这是 InterGoalClip.mp4 的手动校准数据 (你之前 main.py 里的)
+    # 这是 InterGoalClip.mp4 的手动校准数据 (第0帧)
     # 格式: [x, y, keypoint_id]
     # ID 来自 keypoints.py 的 YOLO_INDEX_MAP:
     # 9=L_PA_TOP_LINE, 3=MID_TOP, 2=CIRCLE_BOTTOM, 15=L_PENALTY_SPOT
-    MOCK_KEYPOINTS = [
+    MANUAL_KEYPOINTS = [
         (137, 89, 9),    # L_PA_TOP_LINE
         (1126, 87, 3),   # MID_TOP
         (1045, 398, 2),  # CIRCLE_BOTTOM

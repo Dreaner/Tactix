@@ -11,13 +11,13 @@ Description:
 
 from tactix.core.types import PitchConfig
 
-# 真实球场尺寸 (米)
+# Real pitch dimensions (meters)
 L = PitchConfig.LENGTH # 105
 W = PitchConfig.WIDTH  # 68
 
-# 定义关键点在"真实世界"的坐标 (单位: 米)
-# 坐标系: 原点 (0,0) 在左上角角旗
-# X轴: 向右, Y轴: 向下
+# Define keypoints in "Real World" coordinates (Unit: meters)
+# Coordinate System: Origin (0,0) at Top-Left Corner Flag
+# X-axis: Right, Y-axis: Down
 WORLD_POINTS = {
     "TL_CORNER": [0, 0],
     "BL_CORNER": [0, W],
@@ -30,25 +30,25 @@ WORLD_POINTS = {
     "CIRCLE_TOP": [L/2, W/2 - 9.15],
     "CIRCLE_BOTTOM": [L/2, W/2 + 9.15],
 
-    # 左禁区
+    # Left Penalty Area
     "L_PA_TOP_CORNER":   [16.5, 13.84],
     "L_PA_BOTTOM_CORNER":[16.5, W-13.84],
     "L_PA_TOP_LINE":     [0, 13.84],
     "L_PA_BOTTOM_LINE":  [0, W-13.84],
     "L_PENALTY_SPOT":    [11.0, W/2],
     
-    # 左小禁区
+    # Left Goal Area
     "L_GA_TOP_CORNER":   [5.5, 24.84],
     "L_GA_BOTTOM_CORNER":[5.5, W-24.84],
 
-    # 右禁区 (X = 105 - distance)
+    # Right Penalty Area (X = 105 - distance)
     "R_PA_TOP_CORNER":   [L-16.5, 13.84],
     "R_PA_BOTTOM_CORNER":[L-16.5, W-13.84],
     "R_PA_TOP_LINE":     [L, 13.84],
     "R_PA_BOTTOM_LINE":  [L, W-13.84],
     "R_PENALTY_SPOT":    [L-11.0, W/2],
     
-    # 右小禁区
+    # Right Goal Area
     "R_GA_TOP_CORNER":   [L-5.5, 24.84],
     "R_GA_BOTTOM_CORNER":[L-5.5, W-24.84],
 }
