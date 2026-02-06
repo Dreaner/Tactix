@@ -22,6 +22,7 @@ from tactix.semantics.team import TeamClassifier
 from tactix.tactics.pass_network import PassNetwork
 from tactix.tactics.space_control import SpaceControl
 from tactix.tactics.heatmap import HeatmapGenerator
+from tactix.tactics.team_compactness import TeamCompactness # Import TeamCompactness
 from tactix.vision.detector import Detector
 from tactix.vision.calibration.ai_estimator import AIPitchEstimator
 from tactix.vision.calibration.manual_estimator import ManualPitchEstimator
@@ -71,6 +72,7 @@ class TactixEngine:
         self.pass_net = PassNetwork(self.cfg.MAX_PASS_DIST, self.cfg.BALL_OWNER_DIST)
         self.space_control = SpaceControl()
         self.heatmap_generator = HeatmapGenerator()
+        self.team_compactness = TeamCompactness() # Initialize TeamCompactness
 
         # ==========================================
         # 3. Initialize Visualization Modules
@@ -191,23 +193,31 @@ class TactixEngine:
                 # === Stage 4: Tactical Analysis (Tactics) ===
                 # ==========================================
                 # 4.1 Passing Network
-                pass_lines = self.pass_net.analyze(frame_data)
+                pass_lines = []
+                if self.cfg.SHOW_PASS_NETWORK:
+                    pass_lines = self.pass_net.analyze(frame_data)
                 
                 # 4.2 Space Control (Voronoi)
                 voronoi_overlay = None
-                if has_matrix:
+                if has_matrix and self.cfg.SHOW_VORONOI:
                     voronoi_overlay = self.space_control.generate_voronoi(frame_data)
                     
                 # 4.3 Heatmap
                 heatmap_overlay = None
                 if has_matrix:
                     self.heatmap_generator.update(frame_data)
-                    heatmap_overlay = self.heatmap_generator.generate_overlay()
+                    if self.cfg.SHOW_HEATMAP:
+                        heatmap_overlay = self.heatmap_generator.generate_overlay()
+                    
+                # 4.4 Team Compactness (Convex Hull)
+                compactness_overlay = None
+                if has_matrix and self.cfg.SHOW_COMPACTNESS:
+                    compactness_overlay = self.team_compactness.generate_overlay(frame_data)
 
                 # ==========================================
                 # === Stage 5: Visualization (Rendering) ===
                 # ==========================================
-                canvas = self._draw_frame(frame, frame_data, active_keypoints, has_matrix, pass_lines, voronoi_overlay, heatmap_overlay)
+                canvas = self._draw_frame(frame, frame_data, active_keypoints, has_matrix, pass_lines, voronoi_overlay, heatmap_overlay, compactness_overlay)
 
                 # Write to video
                 sink.write_frame(canvas)
@@ -224,26 +234,27 @@ class TactixEngine:
 
         print(f"✅ Done! Saved to {self.cfg.OUTPUT_VIDEO}")
 
-    def _draw_frame(self, frame, frame_data, pitch_keypoints, has_matrix, pass_lines, voronoi_overlay, heatmap_overlay):
+    def _draw_frame(self, frame, frame_data, pitch_keypoints, has_matrix, pass_lines, voronoi_overlay, heatmap_overlay, compactness_overlay):
         """
         Handles all drawing logic for the current frame.
         """
         annotated_frame = frame.copy()
 
         # 1. Draw Pitch Keypoints (Debug)
-        # if pitch_keypoints is not None:
-        #     for x, y in pitch_keypoints:
-        #         cv2.circle(annotated_frame, (int(x), int(y)), 3, Colors.to_bgr(Colors.KEYPOINT), -1)
+        if self.cfg.SHOW_DEBUG_KEYPOINTS and pitch_keypoints is not None:
+            for x, y in pitch_keypoints:
+                cv2.circle(annotated_frame, (int(x), int(y)), 3, Colors.to_bgr(Colors.KEYPOINT), -1)
 
         # 2. Draw Passing Network
-        for start, end, opacity in pass_lines:
-            overlay = annotated_frame.copy()
-            # Draw line
-            cv2.line(overlay, start, end, Colors.to_bgr(Colors.KEYPOINT), 2, cv2.LINE_AA)
-            # Blend layer for transparency
-            cv2.addWeighted(overlay, opacity, annotated_frame, 1 - opacity, 0, annotated_frame)
-            # Draw end dot
-            cv2.circle(annotated_frame, end, 4, Colors.to_bgr(Colors.KEYPOINT), -1)
+        if self.cfg.SHOW_PASS_NETWORK:
+            for start, end, opacity in pass_lines:
+                overlay = annotated_frame.copy()
+                # Draw line
+                cv2.line(overlay, start, end, Colors.to_bgr(Colors.KEYPOINT), 2, cv2.LINE_AA)
+                # Blend layer for transparency
+                cv2.addWeighted(overlay, opacity, annotated_frame, 1 - opacity, 0, annotated_frame)
+                # Draw end dot
+                cv2.circle(annotated_frame, end, 4, Colors.to_bgr(Colors.KEYPOINT), -1)
 
         # 3. Draw Players (Box + Label)
         if len(frame_data.players) > 0:
@@ -282,8 +293,15 @@ class TactixEngine:
 
         # 5. Draw Minimap (Overlay)
         if has_matrix:
-            # Generate full-size minimap with Voronoi and Heatmap overlays
-            minimap = self.minimap_renderer.draw(frame_data, voronoi_overlay, heatmap_overlay)
+            # Generate full-size minimap with Voronoi, Heatmap, and Compactness overlays
+            # Pass config flags to renderer if needed, but here we control overlays via arguments
+            minimap = self.minimap_renderer.draw(
+                frame_data, 
+                voronoi_overlay, 
+                heatmap_overlay, 
+                compactness_overlay,
+                show_velocity=self.cfg.SHOW_VELOCITY # Pass velocity flag
+            )
 
             # Calculate scaled dimensions (Fixed width 300px)
             h, w, _ = minimap.shape

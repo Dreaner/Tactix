@@ -48,12 +48,14 @@ class MinimapRenderer:
             TeamID.UNKNOWN: Colors.to_bgr(Colors.UNKNOWN)
         }
 
-    def draw(self, frame_data: FrameData, voronoi_overlay: np.ndarray = None, heatmap_overlay: np.ndarray = None) -> np.ndarray:
+    def draw(self, frame_data: FrameData, voronoi_overlay: np.ndarray = None, heatmap_overlay: np.ndarray = None, compactness_overlay: np.ndarray = None, show_velocity: bool = True) -> np.ndarray:
         """
         Draws the minimap for the current frame.
         :param frame_data: Frame data
         :param voronoi_overlay: Pre-calculated Voronoi RGBA layer (optional)
         :param heatmap_overlay: Pre-calculated Heatmap RGBA layer (optional)
+        :param compactness_overlay: Pre-calculated Convex Hull RGBA layer (optional)
+        :param show_velocity: Whether to draw velocity vectors
         """
         # Copy background
         minimap = self.bg_image.copy()
@@ -65,6 +67,10 @@ class MinimapRenderer:
         # 0.5 Overlay Voronoi layer (if any)
         if voronoi_overlay is not None:
             self._overlay_image(minimap, voronoi_overlay)
+            
+        # 0.6 Overlay Compactness layer (if any)
+        if compactness_overlay is not None:
+            self._overlay_image(minimap, compactness_overlay)
 
         # 1. Draw Players
         for p in frame_data.players:
@@ -76,7 +82,7 @@ class MinimapRenderer:
                 color = self.colors.get(p.team, self.colors[TeamID.UNKNOWN])
                 
                 # --- A. Draw Velocity Vector ---
-                if p.velocity:
+                if show_velocity and p.velocity:
                     # Velocity vector length scale factor (e.g., 1m/s drawn as 20px long)
                     scale_factor = 20.0 
                     vx_px = int(p.velocity.x * scale_factor)
@@ -94,22 +100,22 @@ class MinimapRenderer:
                 # Inner circle (Team color)
                 cv2.circle(minimap, (mx, my), 12, color, -1)
                 
-                # Draw Number
-                if p.id != -1:
-                    text = str(p.id)
-                    font_scale = 0.8
-                    thickness = 2
-                    (tw, th), _ = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, font_scale, thickness)
-                    # Center text
-                    tx = mx - tw // 2
-                    ty = my + th // 2 - 2
-                    
-                    # Text color: White for most, Black for light backgrounds (like Yellow Referee)
-                    text_color = Colors.to_bgr(Colors.TEXT)
-                    if p.team == TeamID.REFEREE: 
-                        text_color = (0, 0, 0)
-                    
-                    cv2.putText(minimap, text, (tx, ty), cv2.FONT_HERSHEY_SIMPLEX, font_scale, text_color, thickness)
+                # # Draw Number (REMOVED)
+                # if p.id != -1:
+                #     text = str(p.id)
+                #     font_scale = 0.8
+                #     thickness = 2
+                #     (tw, th), _ = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, font_scale, thickness)
+                #     # Center text
+                #     tx = mx - tw // 2
+                #     ty = my + th // 2 - 2
+                #     
+                #     # Text color: White for most, Black for light backgrounds (like Yellow Referee)
+                #     text_color = Colors.to_bgr(Colors.TEXT)
+                #     if p.team == TeamID.REFEREE: 
+                #         text_color = (0, 0, 0)
+                #     
+                #     cv2.putText(minimap, text, (tx, ty), cv2.FONT_HERSHEY_SIMPLEX, font_scale, text_color, thickness)
 
         # 2. Draw Ball
         if frame_data.ball and frame_data.ball.pitch_position:

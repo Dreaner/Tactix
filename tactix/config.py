@@ -84,3 +84,11 @@ class Config:
         (1045, 398, 2),  # CIRCLE_BOTTOM
         (138, 222, 15)   # L_PENALTY_SPOT
     ])
+
+    # === Visualization Settings (Default State) ===
+    SHOW_VORONOI: bool = False
+    SHOW_HEATMAP: bool = False
+    SHOW_COMPACTNESS: bool = False
+    SHOW_PASS_NETWORK: bool = True
+    SHOW_VELOCITY: bool = True
+    SHOW_DEBUG_KEYPOINTS: bool = False
