@@ -22,7 +22,8 @@ from tactix.semantics.team import TeamClassifier
 from tactix.tactics.pass_network import PassNetwork
 from tactix.tactics.space_control import SpaceControl
 from tactix.tactics.heatmap import HeatmapGenerator
-from tactix.tactics.team_compactness import TeamCompactness # Import TeamCompactness
+from tactix.tactics.team_compactness import TeamCompactness
+from tactix.tactics.pressure_index import PressureIndex # Import PressureIndex
 from tactix.vision.detector import Detector
 from tactix.vision.calibration.ai_estimator import AIPitchEstimator
 from tactix.vision.calibration.manual_estimator import ManualPitchEstimator
@@ -72,7 +73,8 @@ class TactixEngine:
         self.pass_net = PassNetwork(self.cfg.MAX_PASS_DIST, self.cfg.BALL_OWNER_DIST)
         self.space_control = SpaceControl()
         self.heatmap_generator = HeatmapGenerator()
-        self.team_compactness = TeamCompactness() # Initialize TeamCompactness
+        self.team_compactness = TeamCompactness()
+        self.pressure_index = PressureIndex(self.cfg.PRESSURE_RADIUS) # Initialize PressureIndex
 
         # ==========================================
         # 3. Initialize Visualization Modules
@@ -213,6 +215,10 @@ class TactixEngine:
                 compactness_overlay = None
                 if has_matrix and self.cfg.SHOW_COMPACTNESS:
                     compactness_overlay = self.team_compactness.generate_overlay(frame_data)
+                    
+                # 4.5 Pressure Index
+                if self.cfg.SHOW_PRESSURE:
+                    self.pressure_index.calculate(frame_data)
 
                 # ==========================================
                 # === Stage 5: Visualization (Rendering) ===
@@ -300,7 +306,8 @@ class TactixEngine:
                 voronoi_overlay, 
                 heatmap_overlay, 
                 compactness_overlay,
-                show_velocity=self.cfg.SHOW_VELOCITY # Pass velocity flag
+                show_velocity=self.cfg.SHOW_VELOCITY, # Pass velocity flag
+                show_pressure=self.cfg.SHOW_PRESSURE # Pass pressure flag
             )
 
             # Calculate scaled dimensions (Fixed width 300px)

@@ -36,6 +36,11 @@ class Colors:
     KEYPOINT: Tuple[int, int, int] = (0, 255, 255)  # Cyan (BGR: 255, 255, 0) -> RGB: 0, 255, 255
     TEXT: Tuple[int, int, int] = (255, 255, 255)    # White
     
+    # Pressure Colors (Low -> High)
+    PRESSURE_LOW: Tuple[int, int, int] = (0, 255, 0)    # Green
+    PRESSURE_MED: Tuple[int, int, int] = (255, 255, 0)  # Yellow
+    PRESSURE_HIGH: Tuple[int, int, int] = (255, 0, 0)   # Red
+    
     @staticmethod
     def to_bgr(rgb: Tuple[int, int, int]) -> Tuple[int, int, int]:
         """Convert RGB to BGR for OpenCV"""
@@ -68,6 +73,7 @@ class Config:
     # === Tactical Parameters ===
     MAX_PASS_DIST: int = 400
     BALL_OWNER_DIST: int = 60
+    PRESSURE_RADIUS: float = 8.0 # Meters
 
     # === Calibration Settings ===
     INTERACTIVE_MODE: bool = True
@@ -89,6 +95,7 @@ class Config:
     SHOW_VORONOI: bool = False
     SHOW_HEATMAP: bool = False
     SHOW_COMPACTNESS: bool = False
-    SHOW_PASS_NETWORK: bool = True
-    SHOW_VELOCITY: bool = True
+    SHOW_PASS_NETWORK: bool = False
+    SHOW_VELOCITY: bool = False
+    SHOW_PRESSURE: bool = True # New flag
     SHOW_DEBUG_KEYPOINTS: bool = False

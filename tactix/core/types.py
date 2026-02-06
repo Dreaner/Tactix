@@ -89,6 +89,10 @@ class Player:
     # Body orientation vector (Unit vector)
     # Used for: Pass probability calculation (hard to pass backwards)
     orientation: Optional[Point] = None
+    
+    # --- Tactical Info (Filled by Tactics Layer) ---
+    # Pressure Index (0.0 - 1.0): How much pressure this player is under
+    pressure: float = 0.0
 
     # --- Historical Info (For drawing trails/trajectories) ---
     # Records pixel coordinates of past N frames [(x,y), (x,y)...]

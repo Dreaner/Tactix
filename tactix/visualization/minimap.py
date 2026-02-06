@@ -48,7 +48,7 @@ class MinimapRenderer:
             TeamID.UNKNOWN: Colors.to_bgr(Colors.UNKNOWN)
         }
 
-    def draw(self, frame_data: FrameData, voronoi_overlay: np.ndarray = None, heatmap_overlay: np.ndarray = None, compactness_overlay: np.ndarray = None, show_velocity: bool = True) -> np.ndarray:
+    def draw(self, frame_data: FrameData, voronoi_overlay: np.ndarray = None, heatmap_overlay: np.ndarray = None, compactness_overlay: np.ndarray = None, show_velocity: bool = True, show_pressure: bool = False) -> np.ndarray:
         """
         Draws the minimap for the current frame.
         :param frame_data: Frame data
@@ -56,6 +56,7 @@ class MinimapRenderer:
         :param heatmap_overlay: Pre-calculated Heatmap RGBA layer (optional)
         :param compactness_overlay: Pre-calculated Convex Hull RGBA layer (optional)
         :param show_velocity: Whether to draw velocity vectors
+        :param show_pressure: Whether to visualize pressure index
         """
         # Copy background
         minimap = self.bg_image.copy()
@@ -81,6 +82,18 @@ class MinimapRenderer:
                 
                 color = self.colors.get(p.team, self.colors[TeamID.UNKNOWN])
                 
+                # --- Pressure Visualization ---
+                # If show_pressure is ON, change the inner circle color based on pressure
+                if show_pressure and p.pressure > 0.1:
+                    # Interpolate between Green (Low) -> Yellow (Med) -> Red (High)
+                    # Simple thresholding for now
+                    if p.pressure < 0.4:
+                        color = Colors.to_bgr(Colors.PRESSURE_LOW)
+                    elif p.pressure < 0.7:
+                        color = Colors.to_bgr(Colors.PRESSURE_MED)
+                    else:
+                        color = Colors.to_bgr(Colors.PRESSURE_HIGH)
+                
                 # --- A. Draw Velocity Vector ---
                 if show_velocity and p.velocity:
                     # Velocity vector length scale factor (e.g., 1m/s drawn as 20px long)
@@ -97,7 +110,7 @@ class MinimapRenderer:
                 # --- B. Draw Dot ---
                 # Outer circle (White border)
                 cv2.circle(minimap, (mx, my), 14, Colors.to_bgr(Colors.TEXT), -1)
-                # Inner circle (Team color)
+                # Inner circle (Team color or Pressure color)
                 cv2.circle(minimap, (mx, my), 12, color, -1)
                 
                 # # Draw Number (REMOVED)
