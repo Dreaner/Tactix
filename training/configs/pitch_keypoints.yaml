@@ -1,10 +1,11 @@
-# 数据集路径 (相对于执行命令的目录，或者写绝对路径)
-path: /Users/dreaner/Dev/Tactix/data/SoccerNet/yolo_ready
+# Ultralytics YOLOv8-Pose Dataset Configuration
+# Path to dataset
+path: ../datasets/pitch_keypoints_v1
 train: images/train
-val: images/valid
+val: images/val
 
-# 关键点定义 (不要动)
-kpt_shape: [27, 3]
+# Keypoints
+kpt_shape: [27, 3] # [number of keypoints, dim (2 for x,y or 3 for x,y,visible)]
 
 # 翻转映射 (不要动)
 # 当图片左右翻转时，左边的点会变成右边的点。
