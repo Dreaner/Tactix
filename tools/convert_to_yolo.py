@@ -271,7 +271,7 @@ def convert_dataset(root_path, split_name):
 
 def main():
     # 👇 你的路径
-    base_dir = r"/Users/dreaner/Dev/Tactix/data/SoccerNet/calibration-2023" 
+    base_dir = r"/datasets/SoccerNet/calibration-2023"
     if not os.path.exists(base_dir):
         print("❌ 路径不对")
         return

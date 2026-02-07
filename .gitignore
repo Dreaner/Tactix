@@ -21,7 +21,7 @@ tactix_train/
 runs/
 
 # 忽略数据文件夹
-data/
+datasets/
 
 # 忽略 IDE 文件夹
 .vscode/

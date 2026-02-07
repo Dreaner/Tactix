@@ -4,9 +4,9 @@ File Created: 2026-02-02 16:16:34
 Author: Xingnan Zhu
 File Name: types.py
 Description:
-    Defines the core data structures and types used throughout the Tactix system.
+    Defines the core datasets structures and types used throughout the Tactix system.
     Includes definitions for TeamID, Point, Player, Ball, FrameData, and PitchConfig.
-    Acts as the central contract for data exchange between modules.
+    Acts as the central contract for datasets exchange between modules.
 """
 
 from dataclasses import dataclass, field

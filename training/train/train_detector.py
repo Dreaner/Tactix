@@ -5,7 +5,7 @@ Author: Xingnan Zhu
 File Name: train_detector.py
 Description:
     Standard script to train a YOLOv8 object detection model (Players/Ball).
-    Usage: python training/train/train_detector.py --data training/configs/ball_player_detector.yaml
+    Usage: python training/train/train_detector.py --datasets training/configs/ball_player_detector.yaml
 """
 
 import argparse
@@ -34,7 +34,7 @@ def train(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Train YOLOv8 Detector")
-    parser.add_argument("--data", type=str, default="football.yaml", help="Path to dataset YAML")
+    parser.add_argument("--datasets", type=str, default="football.yaml", help="Path to dataset YAML")
     parser.add_argument("--model", type=str, default="yolov8n.pt", help="Base model weights")
     parser.add_argument("--epochs", type=int, default=100, help="Number of epochs")
     parser.add_argument("--batch", type=int, default=16, help="Batch size")

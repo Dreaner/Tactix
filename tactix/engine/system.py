@@ -172,7 +172,7 @@ class TactixEngine:
                     self.tracker.update(sv_dets, frame_data)
 
                 # --- B. Team Classification ---
-                # Accumulate data in the first 30 frames to train the color classifier
+                # Accumulate datasets in the first 30 frames to train the color classifier
                 valid_players = [p for p in frame_data.players if p.team == TeamID.UNKNOWN]
                 if not self.classifier_trained and len(valid_players) > 3 and i < 30:
                     self.team_classifier.fit(frame, frame_data.players)
@@ -257,7 +257,7 @@ class TactixEngine:
                 if self.exporter:
                     self.exporter.add_frame(frame_data)
 
-        # Save exported data
+        # Save exported datasets
         if self.exporter:
             self.exporter.save()
 

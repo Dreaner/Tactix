@@ -59,7 +59,7 @@ class MinimapRenderer:
              show_pressure: bool = False) -> np.ndarray:
         """
         Draws the minimap for the current frame.
-        :param frame_data: Frame data
+        :param frame_data: Frame datasets
         :param voronoi_overlay: Pre-calculated Voronoi RGBA layer (optional)
         :param heatmap_overlay: Pre-calculated Heatmap RGBA layer (optional)
         :param compactness_overlay: Pre-calculated Convex Hull RGBA layer (optional)

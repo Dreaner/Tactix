@@ -37,7 +37,7 @@ class AIPitchEstimator(BasePitchEstimator):
                 # Find index of max confidence
                 best_idx = results.boxes.conf.argmax().item()
 
-            # data shape: (1, 27, 3) -> [x, y, conf]
+            # datasets shape: (1, 27, 3) -> [x, y, conf]
             kpts = results.keypoints.data[0].cpu().numpy()
             xy = kpts[:, :2]
             conf = kpts[:, 2]

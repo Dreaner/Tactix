@@ -45,7 +45,7 @@ class ManualPitchEstimator(BasePitchEstimator):
 
     def predict(self, frame: np.ndarray) -> Tuple[Optional[np.ndarray], Optional[np.ndarray]]:
         """
-        Returns data conforming to PitchEstimator interface: (xy, conf)
+        Returns datasets conforming to PitchEstimator interface: (xy, conf)
         xy shape: (27, 2)
         conf shape: (27, )
         """

@@ -21,12 +21,12 @@ class CameraSmoother:
     """
     def __init__(self, window_size=5):
         self.window_size = window_size
-        # Queue to store historical coordinate data
+        # Queue to store historical coordinate datasets
         self.history = deque(maxlen=window_size)
 
     def update(self, current_points: np.ndarray) -> np.ndarray:
         """
-        Adds new data and returns the smoothed result.
+        Adds new datasets and returns the smoothed result.
         :param current_points: Coordinates of the current frame (N, 2)
         :return: Smoothed coordinates (N, 2)
         """
@@ -68,7 +68,7 @@ class CameraTracker:
         """
         self.current_keypoints = keypoints.astype(np.float32).reshape(-1, 1, 2)
         self.prev_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        # Reset smoother history to avoid old data dragging down new position accuracy
+        # Reset smoother history to avoid old datasets dragging down new position accuracy
         self.smoother = CameraSmoother(window_size=self.smoother.window_size)
         self.smoother.update(keypoints) # Immediately push current value
 

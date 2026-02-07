@@ -5,7 +5,7 @@ Author: Xingnan Zhu
 File Name: train_keypoints.py
 Description:
     Standard script to train a YOLOv8-Pose model (Pitch Keypoints).
-    Usage: python training/train/train_keypoints.py --data training/configs/pitch_keypoints.yaml
+    Usage: python training/train/train_keypoints.py --datasets training/configs/pitch_keypoints.yaml
 """
 
 import argparse
@@ -35,7 +35,7 @@ def train(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Train YOLOv8 Pose Estimator")
-    parser.add_argument("--data", type=str, default="pitch-pose.yaml", help="Path to dataset YAML")
+    parser.add_argument("--datasets", type=str, default="pitch-pose.yaml", help="Path to dataset YAML")
     parser.add_argument("--model", type=str, default="yolov8n-pose.pt", help="Base model weights")
     parser.add_argument("--epochs", type=int, default=100, help="Number of epochs")
     parser.add_argument("--batch", type=int, default=16, help="Batch size")

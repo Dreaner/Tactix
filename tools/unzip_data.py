@@ -1,6 +1,6 @@
 """
 Script: Unzip SoccerNet Data
-Description: Automatically extracts .zip files in the data directory.
+Description: Automatically extracts .zip files in the datasets directory.
 """
 import os
 import zipfile
@@ -8,8 +8,8 @@ from tqdm import tqdm
 
 def unzip_files():
     # 1. 锁定数据目录
-    # 路径: Tactix/data/SoccerNet/calibration-2023
-    base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../data/SoccerNet/calibration-2023"))
+    # 路径: Tactix/datasets/SoccerNet/calibration-2023
+    base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../datasets/SoccerNet/calibration-2023"))
     
     # 需要解压的文件列表
     zip_files = ["train.zip", "valid.zip", "test.zip", "challenge.zip"]

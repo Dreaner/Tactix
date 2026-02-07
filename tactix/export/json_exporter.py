@@ -4,7 +4,7 @@ File Created: 2026-02-05 18:37:42
 Author: Xingnan Zhu
 File Name: json_exporter.py
 Description:
-    Exports tracking data to a JSON file.
+    Exports tracking datasets to a JSON file.
     The structure includes metadata and a frame-by-frame list of player/ball positions.
 """
 
@@ -64,7 +64,7 @@ class JsonExporter(BaseExporter):
 
     def save(self):
         """
-        Write the buffered data to a JSON file.
+        Write the buffered datasets to a JSON file.
         """
         output_data = {
             "meta": {

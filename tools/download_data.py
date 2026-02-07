@@ -7,11 +7,11 @@ from SoccerNet.Downloader import SoccerNetDownloader as SNdl
 
 def main():
     # 1. 设置下载路径
-    # 我们希望数据存在项目根目录下的 'data/SoccerNet' 文件夹里
+    # 我们希望数据存在项目根目录下的 'datasets/SoccerNet' 文件夹里
     # os.path.dirname(...) 获取当前脚本所在目录 (tools/)
     # os.path.abspath(...) 转为绝对路径
-    # ../data/SoccerNet  跳到上一级(根目录)的 data 文件夹
-    local_directory = os.path.abspath(os.path.join(os.path.dirname(__file__), "../data/SoccerNet"))
+    # ../datasets/SoccerNet  跳到上一级(根目录)的 datasets 文件夹
+    local_directory = os.path.abspath(os.path.join(os.path.dirname(__file__), "../datasets/SoccerNet"))
     
     print(f"📂 数据将下载到: {local_directory}")
     

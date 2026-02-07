@@ -104,7 +104,7 @@ class Tracker:
             history = self.position_history[pid]
             history.append((current_frame, cx, cy))
             
-            # Need at least 3 frames of data for stable velocity
+            # Need at least 3 frames of datasets for stable velocity
             if len(history) >= 3:
                 # Calculate displacement between oldest frame and current frame
                 # e.g., history[0] is t-4, history[-1] is t
