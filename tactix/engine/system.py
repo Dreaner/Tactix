@@ -24,7 +24,9 @@ from tactix.tactics.space_control import SpaceControl
 from tactix.tactics.heatmap import HeatmapGenerator
 from tactix.tactics.team_compactness import TeamCompactness
 from tactix.tactics.pressure_index import PressureIndex
-from tactix.tactics.cover_shadow import CoverShadow # Import CoverShadow
+from tactix.tactics.cover_shadow import CoverShadow
+from tactix.tactics.team_centroid import TeamCentroid # Import TeamCentroid
+from tactix.tactics.team_width_length import TeamWidthLength # Import TeamWidthLength
 from tactix.vision.detector import Detector
 from tactix.vision.calibration.ai_estimator import AIPitchEstimator
 from tactix.vision.calibration.manual_estimator import ManualPitchEstimator
@@ -76,7 +78,9 @@ class TactixEngine:
         self.heatmap_generator = HeatmapGenerator()
         self.team_compactness = TeamCompactness()
         self.pressure_index = PressureIndex(self.cfg.PRESSURE_RADIUS)
-        self.cover_shadow = CoverShadow(self.cfg.SHADOW_LENGTH, self.cfg.SHADOW_ANGLE) # Initialize CoverShadow
+        self.cover_shadow = CoverShadow(self.cfg.SHADOW_LENGTH, self.cfg.SHADOW_ANGLE)
+        self.team_centroid = TeamCentroid() # Initialize TeamCentroid
+        self.team_width_length = TeamWidthLength() # Initialize TeamWidthLength
 
         # ==========================================
         # 3. Initialize Visualization Modules
@@ -226,11 +230,23 @@ class TactixEngine:
                 shadow_overlay = None
                 if has_matrix and self.cfg.SHOW_COVER_SHADOW:
                     shadow_overlay = self.cover_shadow.generate_overlay(frame_data)
+                    
+                # 4.7 Team Centroid
+                centroid_overlay = None
+                if has_matrix and self.cfg.SHOW_TEAM_CENTROID:
+                    centroid_overlay = self.team_centroid.generate_overlay(frame_data)
+                    
+                # 4.8 Team Width & Length
+                width_length_overlay = None
+                if has_matrix and self.cfg.SHOW_TEAM_WIDTH_LENGTH:
+                    width_length_overlay = self.team_width_length.generate_overlay(frame_data)
 
                 # ==========================================
                 # === Stage 5: Visualization (Rendering) ===
                 # ==========================================
-                canvas = self._draw_frame(frame, frame_data, active_keypoints, has_matrix, pass_lines, voronoi_overlay, heatmap_overlay, compactness_overlay, shadow_overlay)
+                canvas = self._draw_frame(frame, frame_data, active_keypoints, has_matrix, pass_lines, 
+                                          voronoi_overlay, heatmap_overlay, compactness_overlay, 
+                                          shadow_overlay, centroid_overlay, width_length_overlay)
 
                 # Write to video
                 sink.write_frame(canvas)
@@ -247,7 +263,9 @@ class TactixEngine:
 
         print(f"✅ Done! Saved to {self.cfg.OUTPUT_VIDEO}")
 
-    def _draw_frame(self, frame, frame_data, pitch_keypoints, has_matrix, pass_lines, voronoi_overlay, heatmap_overlay, compactness_overlay, shadow_overlay):
+    def _draw_frame(self, frame, frame_data, pitch_keypoints, has_matrix, pass_lines, 
+                    voronoi_overlay, heatmap_overlay, compactness_overlay, 
+                    shadow_overlay, centroid_overlay, width_length_overlay):
         """
         Handles all drawing logic for the current frame.
         """
@@ -314,6 +332,8 @@ class TactixEngine:
                 heatmap_overlay, 
                 compactness_overlay,
                 shadow_overlay, # Pass shadow overlay
+                centroid_overlay, # Pass centroid overlay
+                width_length_overlay, # Pass width/length overlay
                 show_velocity=self.cfg.SHOW_VELOCITY, # Pass velocity flag
                 show_pressure=self.cfg.SHOW_PRESSURE # Pass pressure flag
             )

@@ -21,7 +21,11 @@ class VisualizationMenu:
             "3": ("SHOW_COMPACTNESS", "Team Compactness (Convex Hull)"),
             "4": ("SHOW_PASS_NETWORK", "Passing Network"),
             "5": ("SHOW_VELOCITY", "Velocity Vectors"),
-            "6": ("SHOW_DEBUG_KEYPOINTS", "Debug Keypoints")
+            "6": ("SHOW_PRESSURE", "Pressure Index"),
+            "7": ("SHOW_COVER_SHADOW", "Cover Shadow (Pass Blocking)"),
+            "8": ("SHOW_TEAM_CENTROID", "Team Centroid"),
+            "9": ("SHOW_TEAM_WIDTH_LENGTH", "Team Width & Length"),
+            "0": ("SHOW_DEBUG_KEYPOINTS", "Debug Keypoints")
         }
 
     def run(self):
@@ -36,10 +40,12 @@ class VisualizationMenu:
             print("Toggle layers by entering their number:")
             print("-" * 50)
 
-            for key, (attr, desc) in self.options.items():
+            # Sort options by key to display in order
+            sorted_keys = sorted(self.options.keys(), key=lambda x: int(x) if x.isdigit() else 99)
+            
+            for key in sorted_keys:
+                attr, desc = self.options[key]
                 # Get current state from config instance
-                # Note: Config is a dataclass, so we access attributes directly
-                # But here we passed an instance 'cfg', so we use getattr
                 is_on = getattr(self.cfg, attr)
                 status = "✅ [ON]" if is_on else "❌ [OFF]"
                 print(f"[{key}] {desc:<35} {status}")

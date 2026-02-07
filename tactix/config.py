@@ -100,5 +100,7 @@ class Config:
     SHOW_PASS_NETWORK: bool = False
     SHOW_VELOCITY: bool = False
     SHOW_PRESSURE: bool = False
-    SHOW_COVER_SHADOW: bool = True # New flag
+    SHOW_COVER_SHADOW: bool = False
+    SHOW_TEAM_CENTROID: bool = True # New flag
+    SHOW_TEAM_WIDTH_LENGTH: bool = True # New flag
     SHOW_DEBUG_KEYPOINTS: bool = False

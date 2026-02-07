@@ -48,7 +48,15 @@ class MinimapRenderer:
             TeamID.UNKNOWN: Colors.to_bgr(Colors.UNKNOWN)
         }
 
-    def draw(self, frame_data: FrameData, voronoi_overlay: np.ndarray = None, heatmap_overlay: np.ndarray = None, compactness_overlay: np.ndarray = None, shadow_overlay: np.ndarray = None, show_velocity: bool = True, show_pressure: bool = False) -> np.ndarray:
+    def draw(self, frame_data: FrameData, 
+             voronoi_overlay: np.ndarray = None, 
+             heatmap_overlay: np.ndarray = None, 
+             compactness_overlay: np.ndarray = None, 
+             shadow_overlay: np.ndarray = None, 
+             centroid_overlay: np.ndarray = None, 
+             width_length_overlay: np.ndarray = None,
+             show_velocity: bool = True, 
+             show_pressure: bool = False) -> np.ndarray:
         """
         Draws the minimap for the current frame.
         :param frame_data: Frame data
@@ -56,6 +64,8 @@ class MinimapRenderer:
         :param heatmap_overlay: Pre-calculated Heatmap RGBA layer (optional)
         :param compactness_overlay: Pre-calculated Convex Hull RGBA layer (optional)
         :param shadow_overlay: Pre-calculated Cover Shadow RGBA layer (optional)
+        :param centroid_overlay: Pre-calculated Team Centroid RGBA layer (optional)
+        :param width_length_overlay: Pre-calculated Team Width/Length RGBA layer (optional)
         :param show_velocity: Whether to draw velocity vectors
         :param show_pressure: Whether to visualize pressure index
         """
@@ -77,6 +87,14 @@ class MinimapRenderer:
         # 0.7 Overlay Cover Shadow layer (if any)
         if shadow_overlay is not None:
             self._overlay_image(minimap, shadow_overlay)
+            
+        # 0.8 Overlay Team Width & Length (if any)
+        if width_length_overlay is not None:
+            self._overlay_image(minimap, width_length_overlay)
+            
+        # 0.9 Overlay Team Centroid (if any)
+        if centroid_overlay is not None:
+            self._overlay_image(minimap, centroid_overlay)
 
         # 1. Draw Players
         for p in frame_data.players:
