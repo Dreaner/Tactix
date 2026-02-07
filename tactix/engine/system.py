@@ -23,7 +23,8 @@ from tactix.tactics.pass_network import PassNetwork
 from tactix.tactics.space_control import SpaceControl
 from tactix.tactics.heatmap import HeatmapGenerator
 from tactix.tactics.team_compactness import TeamCompactness
-from tactix.tactics.pressure_index import PressureIndex # Import PressureIndex
+from tactix.tactics.pressure_index import PressureIndex
+from tactix.tactics.cover_shadow import CoverShadow # Import CoverShadow
 from tactix.vision.detector import Detector
 from tactix.vision.calibration.ai_estimator import AIPitchEstimator
 from tactix.vision.calibration.manual_estimator import ManualPitchEstimator
@@ -74,7 +75,8 @@ class TactixEngine:
         self.space_control = SpaceControl()
         self.heatmap_generator = HeatmapGenerator()
         self.team_compactness = TeamCompactness()
-        self.pressure_index = PressureIndex(self.cfg.PRESSURE_RADIUS) # Initialize PressureIndex
+        self.pressure_index = PressureIndex(self.cfg.PRESSURE_RADIUS)
+        self.cover_shadow = CoverShadow(self.cfg.SHADOW_LENGTH, self.cfg.SHADOW_ANGLE) # Initialize CoverShadow
 
         # ==========================================
         # 3. Initialize Visualization Modules
@@ -219,11 +221,16 @@ class TactixEngine:
                 # 4.5 Pressure Index
                 if self.cfg.SHOW_PRESSURE:
                     self.pressure_index.calculate(frame_data)
+                    
+                # 4.6 Cover Shadow
+                shadow_overlay = None
+                if has_matrix and self.cfg.SHOW_COVER_SHADOW:
+                    shadow_overlay = self.cover_shadow.generate_overlay(frame_data)
 
                 # ==========================================
                 # === Stage 5: Visualization (Rendering) ===
                 # ==========================================
-                canvas = self._draw_frame(frame, frame_data, active_keypoints, has_matrix, pass_lines, voronoi_overlay, heatmap_overlay, compactness_overlay)
+                canvas = self._draw_frame(frame, frame_data, active_keypoints, has_matrix, pass_lines, voronoi_overlay, heatmap_overlay, compactness_overlay, shadow_overlay)
 
                 # Write to video
                 sink.write_frame(canvas)
@@ -240,7 +247,7 @@ class TactixEngine:
 
         print(f"✅ Done! Saved to {self.cfg.OUTPUT_VIDEO}")
 
-    def _draw_frame(self, frame, frame_data, pitch_keypoints, has_matrix, pass_lines, voronoi_overlay, heatmap_overlay, compactness_overlay):
+    def _draw_frame(self, frame, frame_data, pitch_keypoints, has_matrix, pass_lines, voronoi_overlay, heatmap_overlay, compactness_overlay, shadow_overlay):
         """
         Handles all drawing logic for the current frame.
         """
@@ -306,6 +313,7 @@ class TactixEngine:
                 voronoi_overlay, 
                 heatmap_overlay, 
                 compactness_overlay,
+                shadow_overlay, # Pass shadow overlay
                 show_velocity=self.cfg.SHOW_VELOCITY, # Pass velocity flag
                 show_pressure=self.cfg.SHOW_PRESSURE # Pass pressure flag
             )

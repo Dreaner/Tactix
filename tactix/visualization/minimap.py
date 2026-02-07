@@ -48,13 +48,14 @@ class MinimapRenderer:
             TeamID.UNKNOWN: Colors.to_bgr(Colors.UNKNOWN)
         }
 
-    def draw(self, frame_data: FrameData, voronoi_overlay: np.ndarray = None, heatmap_overlay: np.ndarray = None, compactness_overlay: np.ndarray = None, show_velocity: bool = True, show_pressure: bool = False) -> np.ndarray:
+    def draw(self, frame_data: FrameData, voronoi_overlay: np.ndarray = None, heatmap_overlay: np.ndarray = None, compactness_overlay: np.ndarray = None, shadow_overlay: np.ndarray = None, show_velocity: bool = True, show_pressure: bool = False) -> np.ndarray:
         """
         Draws the minimap for the current frame.
         :param frame_data: Frame data
         :param voronoi_overlay: Pre-calculated Voronoi RGBA layer (optional)
         :param heatmap_overlay: Pre-calculated Heatmap RGBA layer (optional)
         :param compactness_overlay: Pre-calculated Convex Hull RGBA layer (optional)
+        :param shadow_overlay: Pre-calculated Cover Shadow RGBA layer (optional)
         :param show_velocity: Whether to draw velocity vectors
         :param show_pressure: Whether to visualize pressure index
         """
@@ -72,6 +73,10 @@ class MinimapRenderer:
         # 0.6 Overlay Compactness layer (if any)
         if compactness_overlay is not None:
             self._overlay_image(minimap, compactness_overlay)
+            
+        # 0.7 Overlay Cover Shadow layer (if any)
+        if shadow_overlay is not None:
+            self._overlay_image(minimap, shadow_overlay)
 
         # 1. Draw Players
         for p in frame_data.players:

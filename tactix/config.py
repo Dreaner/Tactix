@@ -74,6 +74,8 @@ class Config:
     MAX_PASS_DIST: int = 400
     BALL_OWNER_DIST: int = 60
     PRESSURE_RADIUS: float = 8.0 # Meters
+    SHADOW_LENGTH: float = 20.0 # Meters
+    SHADOW_ANGLE: float = 20.0 # Degrees
 
     # === Calibration Settings ===
     INTERACTIVE_MODE: bool = True
@@ -97,5 +99,6 @@ class Config:
     SHOW_COMPACTNESS: bool = False
     SHOW_PASS_NETWORK: bool = False
     SHOW_VELOCITY: bool = False
-    SHOW_PRESSURE: bool = True # New flag
+    SHOW_PRESSURE: bool = False
+    SHOW_COVER_SHADOW: bool = True # New flag
     SHOW_DEBUG_KEYPOINTS: bool = False
