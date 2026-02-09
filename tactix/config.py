@@ -55,7 +55,7 @@ class Colors:
 class Config:
     # === Path Settings ===
     PITCH_MODEL_PATH: str = "assets/weights/football_pitch.pt"
-    PLAYER_MODEL_PATH: str = "assets/weights/football_v1.pt"
+    PLAYER_MODEL_PATH: str = "assets/weights/ball_player_yolo11.pt"
     
     INPUT_VIDEO: str = "assets/samples/InterGoalClip.mp4"
     OUTPUT_VIDEO: str = "assets/output/Final_V4_Result.mp4"

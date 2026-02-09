@@ -1,0 +1,14 @@
+# Ultralytics YOLO Dataset Configuration
+# Pointing to local dataset: /Users/dreaner/Dev/Tactix/datasets/football-players-detection-20
+
+path: /Users/dreaner/Dev/Tactix/datasets/football-players-detection-20
+train: train/images
+val: valid/images
+test: test/images  # Optional
+
+# Classes (Ensure these match your dataset's data.yaml)
+names:
+  0: ball
+  1: goalkeeper
+  2: player
+  3: referee

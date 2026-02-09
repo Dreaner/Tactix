@@ -18,7 +18,7 @@ assets/weights/*
 
 # 忽略训练产生的临时文件夹
 tactix_train/
-runs/
+/runs/
 
 # 忽略数据文件夹
 datasets/
@@ -26,3 +26,4 @@ datasets/
 # 忽略 IDE 文件夹
 .vscode/
 .idea/
+
