@@ -17,7 +17,7 @@ from tqdm import tqdm
 
 # Import modules
 from tactix.config import Config, CalibrationMode, Colors
-from tactix.core.types import TeamID, Point
+from tactix.core.types import TeamID, Point, FrameData
 from tactix.semantics.team import TeamClassifier
 from tactix.tactics.pass_network import PassNetwork
 from tactix.tactics.space_control import SpaceControl
@@ -52,15 +52,18 @@ class TactixEngine:
         # 1. Initialize Perception Modules
         # ==========================================
         # Select Pitch Estimator based on Calibration Mode
-        if self.cfg.CALIBRATION_MODE == CalibrationMode.MANUAL_FIXED:
-            print("🔧 Mode: Manual Fixed Calibration")
-            self.pitch_estimator = ManualPitchEstimator(self.cfg.MANUAL_KEYPOINTS)
-        elif self.cfg.CALIBRATION_MODE == CalibrationMode.PANORAMA:
-            print("🌐 Mode: Panorama Calibration")
-            self.pitch_estimator = PanoramaPitchEstimator(self.cfg.MANUAL_KEYPOINTS)
+        if self.cfg.GEOMETRY_ENABLED:
+            if self.cfg.CALIBRATION_MODE == CalibrationMode.MANUAL_FIXED:
+                print("🔧 Mode: Manual Fixed Calibration")
+                self.pitch_estimator = ManualPitchEstimator(self.cfg.MANUAL_KEYPOINTS)
+            elif self.cfg.CALIBRATION_MODE == CalibrationMode.PANORAMA:
+                print("🌐 Mode: Panorama Calibration")
+                self.pitch_estimator = PanoramaPitchEstimator(self.cfg.MANUAL_KEYPOINTS)
+            else:
+                print("🤖 Mode: AI Auto Calibration")
+                self.pitch_estimator = AIPitchEstimator(self.cfg.PITCH_MODEL_PATH, self.cfg.DEVICE)
         else:
-            print("🤖 Mode: AI Auto Calibration")
-            self.pitch_estimator = AIPitchEstimator(self.cfg.PITCH_MODEL_PATH, self.cfg.DEVICE)
+            self.pitch_estimator = None
 
         self.detector = Detector(self.cfg.PLAYER_MODEL_PATH, self.cfg.DEVICE, self.cfg.CONF_PLAYER)
         self.tracker = Tracker()
@@ -129,39 +132,46 @@ class TactixEngine:
             # Use tqdm for progress bar
             for i, frame in tqdm(enumerate(frames), total=video_info.total_frames):
 
+                has_matrix = False
+                active_keypoints = None
+                
                 # ==========================================
                 # === Stage 1: Pitch Calibration (World View) ===
                 # ==========================================
-                # 1. Predict keypoints (AI, Manual, or Panorama)
-                pitch_keypoints, keypoint_confidences = self.pitch_estimator.predict(frame)
-                
-                active_keypoints = None
-                
-                # 2. Refine Keypoints (Smoothing / Fallback)
-                
-                if self.cfg.CALIBRATION_MODE == CalibrationMode.AI_ONLY:
-                    # AI Mode Logic: Trust AI if good, else use Optical Flow fallback
-                    if pitch_keypoints is not None and len(pitch_keypoints) >= 4:
-                        self.camera_tracker.reset(pitch_keypoints, frame)
-                        active_keypoints = pitch_keypoints
+                if self.cfg.GEOMETRY_ENABLED and self.pitch_estimator:
+                    # 1. Predict keypoints (AI, Manual, or Panorama)
+                    pitch_keypoints, keypoint_confidences = self.pitch_estimator.predict(frame)
+                    
+                    # 2. Refine Keypoints (Smoothing / Fallback)
+                    if self.cfg.CALIBRATION_MODE == CalibrationMode.AI_ONLY:
+                        # AI Mode Logic: Trust AI if good, else use Optical Flow fallback
+                        if pitch_keypoints is not None and len(pitch_keypoints) >= 4:
+                            self.camera_tracker.reset(pitch_keypoints, frame)
+                            active_keypoints = pitch_keypoints
+                        else:
+                            tracked_keypoints = self.camera_tracker.update(frame)
+                            if tracked_keypoints is not None:
+                                active_keypoints = tracked_keypoints
+                                keypoint_confidences = np.ones(len(active_keypoints))
                     else:
-                        tracked_keypoints = self.camera_tracker.update(frame)
-                        if tracked_keypoints is not None:
-                            active_keypoints = tracked_keypoints
-                            keypoint_confidences = np.ones(len(active_keypoints))
-                else:
-                    # Manual/Panorama Mode Logic: Trust the estimator directly
-                    active_keypoints = pitch_keypoints
+                        # Manual/Panorama Mode Logic: Trust the estimator directly
+                        active_keypoints = pitch_keypoints
 
-                # Update matrix (returns True as long as a matrix is available, new or old)
-                has_matrix = False
-                if active_keypoints is not None:
-                    has_matrix = self.transformer.update(active_keypoints, keypoint_confidences, self.cfg.CONF_PITCH)
+                    # Update matrix (returns True as long as a matrix is available, new or old)
+                    if active_keypoints is not None:
+                        has_matrix = self.transformer.update(active_keypoints, keypoint_confidences, self.cfg.CONF_PITCH)
 
                 # ==========================================
                 # === Stage 2: Player Detection (Entities) ===
                 # ==========================================
                 frame_data = self.detector.detect(frame, i)
+                
+                # --- DEBUG: Check if Goalkeeper is detected by YOLO ---
+                for p in frame_data.players:
+                    if p.class_id == 1: # Goalkeeper
+                        # Only print once per second (approx every 30 frames) to avoid spam
+                        if i % 30 == 0:
+                            print(f"[Frame {i}] ✅ Goalkeeper DETECTED by YOLO! (ID: {p.id}, Conf: {p.confidence:.2f})")
 
                 # --- A. Tracking Module ---
                 if len(frame_data.players) > 0:
@@ -172,20 +182,59 @@ class TactixEngine:
                     self.tracker.update(sv_dets, frame_data)
 
                 # --- B. Team Classification ---
+                # 1. Pre-processing: Identify players for training (Exclude Referees/GKs if detected by YOLO)
+                # YOLO classes: 0:ball, 1:goalkeeper, 2:player, 3:referee
+                training_candidates = [p for p in frame_data.players if p.class_id == 2 and p.team == TeamID.UNKNOWN]
+                
                 # Accumulate datasets in the first 30 frames to train the color classifier
-                valid_players = [p for p in frame_data.players if p.team == TeamID.UNKNOWN]
-                if not self.classifier_trained and len(valid_players) > 3 and i < 30:
-                    self.team_classifier.fit(frame, frame_data.players)
+                if not self.classifier_trained and len(training_candidates) > 3 and i < 30:
+                    self.team_classifier.fit(frame, training_candidates)
                     if i > 15: self.classifier_trained = True
 
                 # If trained, start predicting team for each player
                 if self.classifier_trained:
-                    self.team_classifier.predict(frame, frame_data)
+                    # 2. Precise Prediction: Only predict for 'player' class
+                    # For others, trust YOLO
+                    players_to_predict = [p for p in frame_data.players if p.class_id == 2]
+                    self.team_classifier.predict(frame, FrameData(frame_index=i, image_shape=frame.shape[:2], players=players_to_predict))
+                    
+                    # 3. Trust YOLO for special roles
+                    for p in frame_data.players:
+                        if p.class_id == 1: # Goalkeeper
+                            p.team = TeamID.GOALKEEPER
+                        elif p.class_id == 3: # Referee
+                            p.team = TeamID.REFEREE
+                            
+                    # 4. Goalkeeper Correction (Heuristic)
+                    # Only run if we have pitch geometry (to know where the goal is)
+                    if has_matrix:
+                        # Check if GK exists for Team A (defending left goal, x=0)
+                        gk_a = any(p.team == TeamID.GOALKEEPER and p.pitch_position and p.pitch_position.x < 52.5 for p in frame_data.players)
+                        if not gk_a:
+                            # Find candidate: Team A player closest to x=0
+                            candidates_a = [p for p in frame_data.players if p.team == TeamID.A and p.pitch_position]
+                            if candidates_a:
+                                closest_a = min(candidates_a, key=lambda p: p.pitch_position.x)
+                                if closest_a.pitch_position.x < 16.5: # Inside penalty box
+                                    closest_a.team = TeamID.GOALKEEPER
+                                    
+                        # Check if GK exists for Team B (defending right goal, x=105)
+                        gk_b = any(p.team == TeamID.GOALKEEPER and p.pitch_position and p.pitch_position.x > 52.5 for p in frame_data.players)
+                        if not gk_b:
+                            # Find candidate: Team B player closest to x=105
+                            candidates_b = [p for p in frame_data.players if p.team == TeamID.B and p.pitch_position]
+                            if candidates_b:
+                                closest_b = max(candidates_b, key=lambda p: p.pitch_position.x)
+                                if closest_b.pitch_position.x > (105 - 16.5): # Inside penalty box
+                                    closest_b.team = TeamID.GOALKEEPER
 
-                # ==========================================
-                # === Stage 3: Coordinate Mapping (Projection) ===
-                # ==========================================
+                # Initialize overlays to None
+                voronoi_overlay, heatmap_overlay, compactness_overlay, shadow_overlay, centroid_overlay, width_length_overlay, pass_lines = [None] * 7
+
                 if has_matrix:
+                    # ==========================================
+                    # === Stage 3: Coordinate Mapping (Projection) ===
+                    # ==========================================
                     self.transformer.transform_players(frame_data.players)
                     
                     # 🔥 Calculate velocity vectors
@@ -197,54 +246,46 @@ class TactixEngine:
                         if ball_pt:
                              frame_data.ball.pitch_position = Point(x=ball_pt[0], y=ball_pt[1])
 
-                # ==========================================
-                # === Stage 4: Tactical Analysis (Tactics) ===
-                # ==========================================
-                # 4.1 Passing Network
-                pass_lines = []
-                if self.cfg.SHOW_PASS_NETWORK:
-                    pass_lines = self.pass_net.analyze(frame_data)
-                
-                # 4.2 Space Control (Voronoi)
-                voronoi_overlay = None
-                if has_matrix and self.cfg.SHOW_VORONOI:
-                    voronoi_overlay = self.space_control.generate_voronoi(frame_data)
+                    # ==========================================
+                    # === Stage 4: Tactical Analysis (Tactics) ===
+                    # ==========================================
+                    # 4.1 Passing Network
+                    if self.cfg.SHOW_PASS_NETWORK:
+                        pass_lines = self.pass_net.analyze(frame_data)
                     
-                # 4.3 Heatmap
-                heatmap_overlay = None
-                if has_matrix:
+                    # 4.2 Space Control (Voronoi)
+                    if self.cfg.SHOW_VORONOI:
+                        voronoi_overlay = self.space_control.generate_voronoi(frame_data)
+                        
+                    # 4.3 Heatmap
                     self.heatmap_generator.update(frame_data)
                     if self.cfg.SHOW_HEATMAP:
                         heatmap_overlay = self.heatmap_generator.generate_overlay()
                     
-                # 4.4 Team Compactness (Convex Hull)
-                compactness_overlay = None
-                if has_matrix and self.cfg.SHOW_COMPACTNESS:
-                    compactness_overlay = self.team_compactness.generate_overlay(frame_data)
-                    
-                # 4.5 Pressure Index
-                if self.cfg.SHOW_PRESSURE:
-                    self.pressure_index.calculate(frame_data)
-                    
-                # 4.6 Cover Shadow
-                shadow_overlay = None
-                if has_matrix and self.cfg.SHOW_COVER_SHADOW:
-                    shadow_overlay = self.cover_shadow.generate_overlay(frame_data)
-                    
-                # 4.7 Team Centroid
-                centroid_overlay = None
-                if has_matrix and self.cfg.SHOW_TEAM_CENTROID:
-                    centroid_overlay = self.team_centroid.generate_overlay(frame_data)
-                    
-                # 4.8 Team Width & Length
-                width_length_overlay = None
-                if has_matrix and self.cfg.SHOW_TEAM_WIDTH_LENGTH:
-                    width_length_overlay = self.team_width_length.generate_overlay(frame_data)
+                    # 4.4 Team Compactness (Convex Hull)
+                    if self.cfg.SHOW_COMPACTNESS:
+                        compactness_overlay = self.team_compactness.generate_overlay(frame_data)
+                        
+                    # 4.5 Pressure Index
+                    if self.cfg.SHOW_PRESSURE:
+                        self.pressure_index.calculate(frame_data)
+                        
+                    # 4.6 Cover Shadow
+                    if self.cfg.SHOW_COVER_SHADOW:
+                        shadow_overlay = self.cover_shadow.generate_overlay(frame_data)
+                        
+                    # 4.7 Team Centroid
+                    if self.cfg.SHOW_TEAM_CENTROID:
+                        centroid_overlay = self.team_centroid.generate_overlay(frame_data)
+                        
+                    # 4.8 Team Width & Length
+                    if self.cfg.SHOW_TEAM_WIDTH_LENGTH:
+                        width_length_overlay = self.team_width_length.generate_overlay(frame_data)
 
                 # ==========================================
                 # === Stage 5: Visualization (Rendering) ===
                 # ==========================================
-                canvas = self._draw_frame(frame, frame_data, active_keypoints, has_matrix, pass_lines, 
+                canvas = self._draw_frame(frame, frame_data, active_keypoints, has_matrix, pass_lines or [], 
                                           voronoi_overlay, heatmap_overlay, compactness_overlay, 
                                           shadow_overlay, centroid_overlay, width_length_overlay)
 
@@ -272,12 +313,12 @@ class TactixEngine:
         annotated_frame = frame.copy()
 
         # 1. Draw Pitch Keypoints (Debug)
-        if self.cfg.SHOW_DEBUG_KEYPOINTS and pitch_keypoints is not None:
+        if self.cfg.GEOMETRY_ENABLED and self.cfg.SHOW_DEBUG_KEYPOINTS and pitch_keypoints is not None:
             for x, y in pitch_keypoints:
                 cv2.circle(annotated_frame, (int(x), int(y)), 3, Colors.to_bgr(Colors.KEYPOINT), -1)
 
         # 2. Draw Passing Network
-        if self.cfg.SHOW_PASS_NETWORK:
+        if self.cfg.GEOMETRY_ENABLED and self.cfg.SHOW_PASS_NETWORK:
             for start, end, opacity in pass_lines:
                 overlay = annotated_frame.copy()
                 # Draw line
@@ -323,7 +364,7 @@ class TactixEngine:
             annotated_frame = self.ball_annotator.annotate(annotated_frame, b_det)
 
         # 5. Draw Minimap (Overlay)
-        if has_matrix:
+        if has_matrix and self.cfg.SHOW_MINIMAP:
             # Generate full-size minimap with Voronoi, Heatmap, and Compactness overlays
             # Pass config flags to renderer if needed, but here we control overlays via arguments
             minimap = self.minimap_renderer.draw(
@@ -355,9 +396,9 @@ class TactixEngine:
 
                 # Add a refined white border (Thickness=1)
                 cv2.rectangle(annotated_frame, (20, 20), (20+target_w, 20+target_h), Colors.to_bgr(Colors.TEXT), 1)
-        else:
+        elif not self.cfg.GEOMETRY_ENABLED:
             # If no matrix at all (System initializing)
-            cv2.putText(annotated_frame, "Seeking Pitch...", (20, 50),
+            cv2.putText(annotated_frame, "GEOMETRY DISABLED", (20, 50),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.8, Colors.to_bgr(Colors.KEYPOINT), 2)
 
         return annotated_frame

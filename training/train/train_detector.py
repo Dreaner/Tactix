@@ -77,14 +77,13 @@ def train(args):
 if __name__ == "__main__":
     # Default configuration for Football Player Detection
     
-    # Get absolute path to the config file
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    config_path = os.path.join(current_dir, "../configs/football_v2.yaml")
+    # Use the dataset's built-in data.yaml
+    dataset_config_path = "/Users/dreaner/Dev/Tactix/datasets/football-players-detection.v20-rf-detr-m.yolo26/data.yaml"
     
     parser = argparse.ArgumentParser(description="Train YOLO Detector")
     
     # Set defaults to your specific task
-    parser.add_argument("--data", type=str, default=config_path, help="Path to dataset YAML")
+    parser.add_argument("--data", type=str, default=dataset_config_path, help="Path to dataset YAML")
     # Updated to yolo26x.pt as requested
     parser.add_argument("--model", type=str, default="yolo26x.pt", help="Base model weights")
     parser.add_argument("--epochs", type=int, default=50, help="Number of epochs")
@@ -93,7 +92,7 @@ if __name__ == "__main__":
     parser.add_argument("--imgsz", type=int, default=640, help="Image size")
     parser.add_argument("--device", type=str, default="cpu", help="Device (cpu, cuda, mps)")
     parser.add_argument("--project", type=str, default="runs/train", help="Save results to project/name")
-    parser.add_argument("--name", type=str, default="football_yolo26x", help="Experiment name")
+    parser.add_argument("--name", type=str, default="football_v20_yolo26x", help="Experiment name")
     
     args = parser.parse_args()
     

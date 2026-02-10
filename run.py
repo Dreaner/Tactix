@@ -32,7 +32,7 @@ if __name__ == "__main__":
         print("🔧 Launching Interactive Calibration Tool...")
         calib_ui = CalibrationUI(cfg.INPUT_VIDEO)
         manual_points = calib_ui.run()
-        
+
         if manual_points:
             print(f"✅ Calibration successful! Captured {len(manual_points)} points.")
         else:
@@ -47,7 +47,7 @@ if __name__ == "__main__":
     # Pass the manual points (if any) and the configured cfg object to the engine
     # Note: TactixEngine currently creates its own Config() inside __init__.
     # We should modify TactixEngine to accept an existing config object to persist our menu changes.
-    
+
     # For now, since Config is a dataclass and we modified the instance 'cfg',
     # we need to make sure the Engine uses THIS instance.
     # Let's update TactixEngine to accept a config object.

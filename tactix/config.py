@@ -55,10 +55,10 @@ class Colors:
 class Config:
     # === Path Settings ===
     PITCH_MODEL_PATH: str = "assets/weights/football_pitch.pt"
-    PLAYER_MODEL_PATH: str = "assets/weights/ball_player_yolo11.pt"
+    PLAYER_MODEL_PATH: str = "assets/weights/ball_player_yolo26x.pt"
     
-    INPUT_VIDEO: str = "assets/samples/InterGoalClip.mp4"
-    OUTPUT_VIDEO: str = "assets/output/Final_V4_Result.mp4"
+    INPUT_VIDEO: str = "assets/samples/test2.mp4"
+    OUTPUT_VIDEO: str = "assets/output/test2_Result.mp4"
     PITCH_TEMPLATE: str = "assets/pitch_bg.png"
     
     # Export Settings
@@ -78,7 +78,7 @@ class Config:
     SHADOW_ANGLE: float = 20.0 # Degrees
 
     # === Calibration Settings ===
-    INTERACTIVE_MODE: bool = True
+    INTERACTIVE_MODE: bool = False
     
     # Current Calibration Mode
     CALIBRATION_MODE: CalibrationMode = CalibrationMode.PANORAMA
@@ -86,14 +86,17 @@ class Config:
     # Legacy flag (kept for compatibility, but logic moved to CALIBRATION_MODE)
     USE_MOCK_PITCH: bool = True 
 
-    MANUAL_KEYPOINTS: List[Tuple[int, int, int]] = field(default_factory=lambda: [
-        (137, 89, 9),    # L_PA_TOP_LINE
-        (1126, 87, 3),   # MID_TOP
-        (1045, 398, 2),  # CIRCLE_BOTTOM
-        (138, 222, 15)   # L_PENALTY_SPOT
-    ])
+    # MANUAL_KEYPOINTS: List[Tuple[int, int, int]] = field(default_factory=lambda: [
+    #     (137, 89, 9),    # L_PA_TOP_LINE
+    #     (1126, 87, 3),   # MID_TOP
+    #     (1045, 398, 2),  # CIRCLE_BOTTOM
+    #     (138, 222, 15)   # L_PENALTY_SPOT
+    # ])
 
     # === Visualization Settings (Default State) ===
+    GEOMETRY_ENABLED: bool = False # Master switch for pitch calibration/minimap
+    
+    SHOW_MINIMAP: bool = False
     SHOW_VORONOI: bool = False
     SHOW_HEATMAP: bool = False
     SHOW_COMPACTNESS: bool = False
@@ -101,6 +104,6 @@ class Config:
     SHOW_VELOCITY: bool = False
     SHOW_PRESSURE: bool = False
     SHOW_COVER_SHADOW: bool = False
-    SHOW_TEAM_CENTROID: bool = True # New flag
-    SHOW_TEAM_WIDTH_LENGTH: bool = True # New flag
+    SHOW_TEAM_CENTROID: bool = False
+    SHOW_TEAM_WIDTH_LENGTH: bool = False
     SHOW_DEBUG_KEYPOINTS: bool = False
