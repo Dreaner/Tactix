@@ -86,14 +86,7 @@ class Config:
     # Legacy flag (kept for compatibility, but logic moved to CALIBRATION_MODE)
     USE_MOCK_PITCH: bool = True 
 
-    # MANUAL_KEYPOINTS: List[Tuple[int, int, int]] = field(default_factory=lambda: [
-    #     (137, 89, 9),    # L_PA_TOP_LINE
-    #     (1126, 87, 3),   # MID_TOP
-    #     (1045, 398, 2),  # CIRCLE_BOTTOM
-    #     (138, 222, 15)   # L_PENALTY_SPOT
-    # ])
-
-    # === Visualization Settings (Default State) ===
+# === Visualization Settings (Default State) ===
     GEOMETRY_ENABLED: bool = False # Master switch for pitch calibration/minimap
     
     SHOW_MINIMAP: bool = False
@@ -107,3 +100,11 @@ class Config:
     SHOW_TEAM_CENTROID: bool = False
     SHOW_TEAM_WIDTH_LENGTH: bool = False
     SHOW_DEBUG_KEYPOINTS: bool = False
+
+    # === Tracking & Interpolation Settings ===
+    # Max consecutive frames the ball can be missing before interpolation stops.
+    BALL_INTERP_MAX_GAP: int = 10
+
+    # === Cache Settings ===
+    ENABLE_CACHE: bool = False
+    CACHE_DIR: str = "assets/cache"

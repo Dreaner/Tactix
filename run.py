@@ -44,16 +44,5 @@ if __name__ == "__main__":
     viz_menu.run()
 
     # 4. Start the Engine
-    # Pass the manual points (if any) and the configured cfg object to the engine
-    # Note: TactixEngine currently creates its own Config() inside __init__.
-    # We should modify TactixEngine to accept an existing config object to persist our menu changes.
-
-    # For now, since Config is a dataclass and we modified the instance 'cfg',
-    # we need to make sure the Engine uses THIS instance.
-    # Let's update TactixEngine to accept a config object.
-    engine = TactixEngine(manual_keypoints=manual_points)
-    # Manually inject the configured cfg object into the engine
-    # This is a temporary fix until we refactor TactixEngine to accept config in __init__
-    engine.cfg = cfg
-
+    engine = TactixEngine(cfg=cfg, manual_keypoints=manual_points)
     engine.run()

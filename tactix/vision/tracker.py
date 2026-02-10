@@ -110,7 +110,16 @@ class Tracker:
                 # e.g., history[0] is t-4, history[-1] is t
                 start_frame, sx, sy = history[0]
                 end_frame, ex, ey = history[-1]
-                
+
+                # Guard against large frame gaps caused by tracking loss + re-detection.
+                # If history spans more than 10 frames, the position jump is not real
+                # motion — clear the stale history and start fresh this frame.
+                frame_gap = end_frame - start_frame
+                if frame_gap > 10:
+                    self.position_history[pid].clear()
+                    self.position_history[pid].append((current_frame, cx, cy))
+                    continue
+
                 time_diff = (end_frame - start_frame) * dt
                 if time_diff > 0:
                     vx = (ex - sx) / time_diff

@@ -73,6 +73,16 @@ class TeamClassifier:
                     label = self.kmeans.predict([color])[0]
                     p.team = TeamID.A if label == 0 else TeamID.B
 
+    def predict_one(self, color: np.ndarray) -> TeamID:
+        """
+        Predict the team for a single pre-extracted color vector.
+        Returns TeamID.UNKNOWN if the classifier is not yet trained.
+        """
+        if self.kmeans is None:
+            return TeamID.UNKNOWN
+        label = self.kmeans.predict([color])[0]
+        return TeamID.A if label == 0 else TeamID.B
+
     @staticmethod
     def _extract_shirt_color(frame: np.ndarray, rect: Tuple[float, float, float, float]) -> Optional[np.ndarray]:
         """

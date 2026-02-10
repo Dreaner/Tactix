@@ -187,12 +187,28 @@ class PitchConfig:
     # Used for calculating real speed and distance
     LENGTH = 105.0
     WIDTH = 68.0
-    
+
     # Note: After generating the image, check its details in assets/pitch_bg.png
     # Right click image on Mac -> Get Info -> Dimensions
     PIXEL_WIDTH = 1559
     PIXEL_HEIGHT = 1010
-    
+
     # Auto-calculate scale (Pixels/Meter)
     X_SCALE = PIXEL_WIDTH / LENGTH
     Y_SCALE = PIXEL_HEIGHT / WIDTH
+
+
+# ==========================================
+# 7. Rendering Bundles (Visualization Layer Input)
+# ==========================================
+
+@dataclass
+class TacticalOverlays:
+    """Bundles all optional RGBA overlay arrays produced by the tactics layer."""
+    voronoi:      Optional[np.ndarray] = None
+    heatmap:      Optional[np.ndarray] = None
+    compactness:  Optional[np.ndarray] = None
+    shadow:       Optional[np.ndarray] = None
+    centroid:     Optional[np.ndarray] = None
+    width_length: Optional[np.ndarray] = None
+    pass_lines:   List = field(default_factory=list)

@@ -28,3 +28,4 @@ datasets/
 .idea/
 
 /training/train/runs/
+notebooks/runs/detect/predict/test1.mp4
