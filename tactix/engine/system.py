@@ -343,16 +343,18 @@ class TactixEngine:
             xyxy = np.array([p.rect for p in frame_data.players])
             color_indices, labels = [], []
             for p in frame_data.players:
+                kmh = p.speed * 3.6
+                speed_str = f" {kmh:.1f}" if kmh > 0.5 else ""
                 if p.team == TeamID.A:
-                    color_indices.append(0); labels.append(f"#{p.id}")
+                    color_indices.append(0); labels.append(f"#{p.id}{speed_str}")
                 elif p.team == TeamID.B:
-                    color_indices.append(1); labels.append(f"#{p.id}")
+                    color_indices.append(1); labels.append(f"#{p.id}{speed_str}")
                 elif p.team == TeamID.REFEREE:
                     color_indices.append(2); labels.append("Ref")
                 elif p.team == TeamID.GOALKEEPER:
-                    color_indices.append(3); labels.append("GK")
+                    color_indices.append(3); labels.append(f"GK{speed_str}")
                 else:
-                    color_indices.append(4); labels.append(f"#{p.id}")
+                    color_indices.append(4); labels.append(f"#{p.id}{speed_str}")
 
             sv_dets = sv.Detections(xyxy=xyxy, class_id=np.array(color_indices))
             self.ellipse_annotator.color = self.palette
