@@ -18,14 +18,15 @@ from tactix.config import Config, CalibrationMode, Colors
 from tactix.core.registry import PlayerRegistry, BallStateTracker
 from tactix.core.types import TeamID, Point, FrameData, TacticalOverlays
 from tactix.semantics.team import TeamClassifier
-from tactix.tactics.base.pass_network import PassNetwork
-from tactix.tactics.base.space_control import SpaceControl
-from tactix.tactics.base.heatmap import HeatmapGenerator
-from tactix.tactics.base.team_compactness import TeamCompactness
-from tactix.tactics.base.pressure_index import PressureIndex
-from tactix.tactics.base.cover_shadow import CoverShadow
-from tactix.tactics.base.team_centroid import TeamCentroid
-from tactix.tactics.base.team_width_length import TeamWidthLength
+from tactix.analytics.base.pass_network import PassNetwork
+from tactix.analytics.base.heatmap import HeatmapAccumulator
+from tactix.analytics.base.pressure_index import PressureIndex
+from tactix.visualization.overlays.base.heatmap import HeatmapOverlay
+from tactix.visualization.overlays.base.voronoi import VoronoiOverlay
+from tactix.visualization.overlays.base.compactness import CompactnessOverlay
+from tactix.visualization.overlays.base.cover_shadow import CoverShadowOverlay
+from tactix.visualization.overlays.base.team_centroid import CentroidOverlay
+from tactix.visualization.overlays.base.team_width_length import WidthLengthOverlay
 from tactix.vision.detector import Detector
 from tactix.vision.calibration.ai_estimator import AIPitchEstimator
 from tactix.vision.calibration.manual_estimator import ManualPitchEstimator
@@ -80,14 +81,12 @@ class TactixEngine:
         # ==========================================
         self.transformer = ViewTransformer()
         self.team_classifier = TeamClassifier(device=self.cfg.DEVICE)
+        # Analytics
         self.pass_net = PassNetwork(self.cfg.MAX_PASS_DIST, self.cfg.BALL_OWNER_DIST)
-        self.space_control = SpaceControl()
-        self.heatmap_generator = HeatmapGenerator()
-        self.team_compactness = TeamCompactness()
+        self.heatmap = HeatmapAccumulator()
         self.pressure_index = PressureIndex(self.cfg.PRESSURE_RADIUS)
-        self.cover_shadow = CoverShadow(self.cfg.SHADOW_LENGTH, self.cfg.SHADOW_ANGLE)
-        self.team_centroid = TeamCentroid()
-        self.team_width_length = TeamWidthLength()
+        # Overlay renderers (stateless except CoverShadowOverlay which holds config params)
+        self.cover_shadow = CoverShadowOverlay(self.cfg.SHADOW_LENGTH, self.cfg.SHADOW_ANGLE)
 
         # ==========================================
         # 3. Visualization Modules
@@ -310,26 +309,26 @@ class TactixEngine:
             overlays.pass_lines = self.pass_net.analyze(frame_data)
 
         if self.cfg.SHOW_VORONOI:
-            overlays.voronoi = self.space_control.generate_voronoi(frame_data)
+            overlays.voronoi = VoronoiOverlay.render(frame_data)
 
-        self.heatmap_generator.update(frame_data)
+        self.heatmap.update(frame_data)
         if self.cfg.SHOW_HEATMAP:
-            overlays.heatmap = self.heatmap_generator.generate_overlay()
+            overlays.heatmap = HeatmapOverlay.render(self.heatmap)
 
         if self.cfg.SHOW_COMPACTNESS:
-            overlays.compactness = self.team_compactness.generate_overlay(frame_data)
+            overlays.compactness = CompactnessOverlay.render(frame_data)
 
         if self.cfg.SHOW_PRESSURE:
             self.pressure_index.calculate(frame_data)
 
         if self.cfg.SHOW_COVER_SHADOW:
-            overlays.shadow = self.cover_shadow.generate_overlay(frame_data)
+            overlays.shadow = self.cover_shadow.render(frame_data)
 
         if self.cfg.SHOW_TEAM_CENTROID:
-            overlays.centroid = self.team_centroid.generate_overlay(frame_data)
+            overlays.centroid = CentroidOverlay.render(frame_data)
 
         if self.cfg.SHOW_TEAM_WIDTH_LENGTH:
-            overlays.width_length = self.team_width_length.generate_overlay(frame_data)
+            overlays.width_length = WidthLengthOverlay.render(frame_data)
 
         # ==========================================
         # M1 — Attacking Phase
