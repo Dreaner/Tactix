@@ -101,9 +101,10 @@ class TactixEngine:
 
     def _init_annotators(self):
         """Initialize Supervision annotators and color palette."""
-        self.box_annotator = sv.BoxAnnotator(thickness=2)
+        # EllipseAnnotator draws a colored arc at the base of each detection bbox (feet area).
+        # ~280° arc with a gap at the bottom, matching the football_analysis visual style.
+        self.ellipse_annotator = sv.EllipseAnnotator(thickness=2, start_angle=-45, end_angle=235)
         self.label_annotator = sv.LabelAnnotator(text_scale=0.4, text_padding=4)
-        self.ball_annotator = sv.DotAnnotator(color=Colors.to_sv(Colors.BALL), radius=5)
 
         self.palette = sv.ColorPalette(colors=[
             Colors.to_sv(Colors.TEAM_A),
@@ -354,15 +355,23 @@ class TactixEngine:
                     color_indices.append(4); labels.append(f"#{p.id}")
 
             sv_dets = sv.Detections(xyxy=xyxy, class_id=np.array(color_indices))
-            self.box_annotator.color = self.palette
+            self.ellipse_annotator.color = self.palette
             self.label_annotator.color = self.palette
-            annotated = self.box_annotator.annotate(annotated, sv_dets)
+            annotated = self.ellipse_annotator.annotate(annotated, sv_dets)
             annotated = self.label_annotator.annotate(annotated, sv_dets, labels=labels)
 
-        # Ball dot
+        # Ball: downward-pointing triangle above the ball center
         if frame_data.ball:
-            b_det = sv.Detections(xyxy=np.array([frame_data.ball.rect]), class_id=np.array([0]))
-            annotated = self.ball_annotator.annotate(annotated, b_det)
+            cx, cy = frame_data.ball.center
+            size = 12       # half-width of the triangle base (px)
+            tip_gap = 8     # gap between triangle tip and ball center (px)
+            pts = np.array([
+                [cx - size, cy - tip_gap - size],   # top-left
+                [cx + size, cy - tip_gap - size],   # top-right
+                [cx,        cy - tip_gap],           # tip (points down toward ball)
+            ], dtype=np.int32)
+            cv2.fillPoly(annotated, [pts], Colors.to_bgr(Colors.BALL))
+            cv2.polylines(annotated, [pts], isClosed=True, color=(0, 0, 0), thickness=1, lineType=cv2.LINE_AA)
 
         # Minimap overlay (top-left corner)
         if has_matrix and self.cfg.SHOW_MINIMAP:
