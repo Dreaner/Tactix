@@ -35,6 +35,7 @@ from tactix.vision.transformer import ViewTransformer
 from tactix.visualization.minimap import MinimapRenderer
 from tactix.vision.camera import CameraTracker
 from tactix.export.json_exporter import JsonExporter
+from tactix.tactics.event_detector import EventDetector
 
 
 class TactixEngine:
@@ -98,6 +99,7 @@ class TactixEngine:
         self.classifier_trained = False
         self.player_registry = PlayerRegistry()
         self.ball_state_tracker = BallStateTracker()
+        self.event_detector = EventDetector(self.cfg)
 
     def _init_annotators(self):
         """Initialize Supervision annotators and color palette."""
@@ -285,6 +287,7 @@ class TactixEngine:
 
     def _stage_tactical_analysis(self, frame_data: FrameData) -> TacticalOverlays:
         """Stage 5: Run enabled tactical modules and return their overlay arrays."""
+        frame_data.events = self.event_detector.detect(frame_data)
         overlays = TacticalOverlays()
 
         if self.cfg.SHOW_PASS_NETWORK:

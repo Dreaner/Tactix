@@ -170,6 +170,7 @@ class FrameData:
     
     # Tactical Data
     analysis: Optional[FrameAnalysis] = None
+    events: Optional[Any] = None   # FrameEvents from EventDetector (typed Any to avoid circular import)
     
     def get_team_players(self, team: TeamID) -> List[Player]:
         return [p for p in self.players if p.team == team]

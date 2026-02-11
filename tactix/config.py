@@ -108,3 +108,25 @@ class Config:
     # === Cache Settings ===
     ENABLE_CACHE: bool = False
     CACHE_DIR: str = "assets/cache"
+
+    # === Zone Definitions (meters) ===
+    # Zone 14: area directly in front of the penalty box
+    ZONE_14: tuple = (77, 88, 25, 43)       # (x_min, x_max, y_min, y_max)
+    ATTACKING_THIRD_X: float = 70.0          # x > this value = attacking third
+    DEFENSIVE_THIRD_X: float = 35.0          # x < this value = defensive third
+    WIDE_ZONE_Y: float = 15.0                # y < this OR y > (68 - this) = wide channel
+
+    # === Event Detection Thresholds ===
+    SHOT_VELOCITY_THRESHOLD: float = 10.0   # m/s — minimum ball speed to detect a shot
+    DUEL_DISTANCE: float = 2.0              # m  — max distance to classify as a duel
+    POSSESSION_CONFIRM_FRAMES: int = 3      # frames to confirm a possession change
+    WALL_MIN_PLAYERS: int = 3               # min players to constitute a free-kick wall
+    WALL_LINEAR_TOLERANCE: float = 1.5      # m — SVD minor-axis tolerance for wall linearity
+
+    # === Phase Analysis Toggles ===
+    SHOW_SHOT_MAP: bool = False
+    SHOW_PASS_SONAR: bool = False
+    SHOW_ZONE_14: bool = False
+    SHOW_BUILDUP: bool = False
+    SHOW_DUEL_HEATMAP: bool = False
+    SHOW_SET_PIECES: bool = False
