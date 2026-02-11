@@ -18,14 +18,14 @@ from tactix.config import Config, CalibrationMode, Colors
 from tactix.core.registry import PlayerRegistry, BallStateTracker
 from tactix.core.types import TeamID, Point, FrameData, TacticalOverlays
 from tactix.semantics.team import TeamClassifier
-from tactix.tactics.pass_network import PassNetwork
-from tactix.tactics.space_control import SpaceControl
-from tactix.tactics.heatmap import HeatmapGenerator
-from tactix.tactics.team_compactness import TeamCompactness
-from tactix.tactics.pressure_index import PressureIndex
-from tactix.tactics.cover_shadow import CoverShadow
-from tactix.tactics.team_centroid import TeamCentroid
-from tactix.tactics.team_width_length import TeamWidthLength
+from tactix.tactics.base.pass_network import PassNetwork
+from tactix.tactics.base.space_control import SpaceControl
+from tactix.tactics.base.heatmap import HeatmapGenerator
+from tactix.tactics.base.team_compactness import TeamCompactness
+from tactix.tactics.base.pressure_index import PressureIndex
+from tactix.tactics.base.cover_shadow import CoverShadow
+from tactix.tactics.base.team_centroid import TeamCentroid
+from tactix.tactics.base.team_width_length import TeamWidthLength
 from tactix.vision.detector import Detector
 from tactix.vision.calibration.ai_estimator import AIPitchEstimator
 from tactix.vision.calibration.manual_estimator import ManualPitchEstimator
@@ -35,7 +35,15 @@ from tactix.vision.transformer import ViewTransformer
 from tactix.visualization.minimap import MinimapRenderer
 from tactix.vision.camera import CameraTracker
 from tactix.export.json_exporter import JsonExporter
-from tactix.tactics.event_detector import EventDetector
+from tactix.analytics.events.event_detector import EventDetector
+from tactix.analytics.attacking.shot_map import ShotMap
+from tactix.analytics.attacking.zone_analyzer import ZoneAnalyzer
+from tactix.analytics.attacking.pass_sonar import PassSonar
+from tactix.analytics.attacking.buildup_tracker import BuildupTracker
+from tactix.visualization.overlays.attacking.shot_map import ShotMapOverlay
+from tactix.visualization.overlays.attacking.zone_14 import Zone14Overlay
+from tactix.visualization.overlays.attacking.pass_sonar import PassSonarOverlay
+from tactix.visualization.overlays.attacking.buildup import BuildupOverlay
 
 
 class TactixEngine:
@@ -100,6 +108,14 @@ class TactixEngine:
         self.player_registry = PlayerRegistry()
         self.ball_state_tracker = BallStateTracker()
         self.event_detector = EventDetector(self.cfg)
+
+        # ==========================================
+        # 5. M1 Attacking Phase Modules
+        # ==========================================
+        self.shot_map = ShotMap()
+        self.zone_analyzer = ZoneAnalyzer(self.cfg)
+        self.pass_sonar = PassSonar()
+        self.buildup_tracker = BuildupTracker(self.cfg)
 
     def _init_annotators(self):
         """Initialize Supervision annotators and color palette."""
@@ -315,6 +331,34 @@ class TactixEngine:
         if self.cfg.SHOW_TEAM_WIDTH_LENGTH:
             overlays.width_length = self.team_width_length.generate_overlay(frame_data)
 
+        # ==========================================
+        # M1 — Attacking Phase
+        # ==========================================
+        events = frame_data.events
+        if events is not None:
+            # Always accumulate (state updates are cheap)
+            for shot in events.shots:
+                self.shot_map.record(shot)
+            for pass_evt in events.passes:
+                self.zone_analyzer.record(pass_evt)
+                self.pass_sonar.record(pass_evt)
+            self.buildup_tracker.update(frame_data.frame_index, events)
+
+        # Always update pass sonar positions (cheap, needed for rendering)
+        self.pass_sonar.update_positions(frame_data)
+
+        # Generate overlays via dedicated renderer classes
+        cw = self.minimap_renderer.canvas_w
+        ch = self.minimap_renderer.canvas_h
+        if self.cfg.SHOW_SHOT_MAP:
+            overlays.shot_map = ShotMapOverlay.render(self.shot_map, cw, ch)
+        if self.cfg.SHOW_ZONE_14:
+            overlays.zone_14 = Zone14Overlay.render(self.zone_analyzer, cw, ch)
+        if self.cfg.SHOW_PASS_SONAR:
+            overlays.pass_sonar = PassSonarOverlay.render(self.pass_sonar, cw, ch)
+        if self.cfg.SHOW_BUILDUP:
+            overlays.buildup = BuildupOverlay.render(self.buildup_tracker, cw, ch)
+
         return overlays
 
     def _stage_visualization(
@@ -390,6 +434,10 @@ class TactixEngine:
                 overlays.width_length,
                 show_velocity=self.cfg.SHOW_VELOCITY,
                 show_pressure=self.cfg.SHOW_PRESSURE,
+                shot_map_overlay=overlays.shot_map,
+                zone_14_overlay=overlays.zone_14,
+                pass_sonar_overlay=overlays.pass_sonar,
+                buildup_overlay=overlays.buildup,
             )
             h, w, _ = minimap.shape
             target_w = 300

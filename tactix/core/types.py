@@ -213,3 +213,8 @@ class TacticalOverlays:
     centroid:     Optional[np.ndarray] = None
     width_length: Optional[np.ndarray] = None
     pass_lines:   List = field(default_factory=list)
+    # M1 — Attacking phase overlays
+    shot_map:     Optional[np.ndarray] = None
+    zone_14:      Optional[np.ndarray] = None
+    pass_sonar:   Optional[np.ndarray] = None
+    buildup:      Optional[np.ndarray] = None

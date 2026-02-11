@@ -29,6 +29,8 @@ class MinimapRenderer:
             self.bg_image[:] = (50, 150, 50) # Green
             
         self.h, self.w = self.bg_image.shape[:2]
+        self.canvas_w: int = self.w
+        self.canvas_h: int = self.h
         
         # Force update PitchConfig dimensions to match the actual loaded image
         if self.w != PitchConfig.PIXEL_WIDTH or self.h != PitchConfig.PIXEL_HEIGHT:
@@ -48,15 +50,20 @@ class MinimapRenderer:
             TeamID.UNKNOWN: Colors.to_bgr(Colors.UNKNOWN)
         }
 
-    def draw(self, frame_data: FrameData, 
-             voronoi_overlay: np.ndarray = None, 
-             heatmap_overlay: np.ndarray = None, 
-             compactness_overlay: np.ndarray = None, 
-             shadow_overlay: np.ndarray = None, 
-             centroid_overlay: np.ndarray = None, 
+    def draw(self, frame_data: FrameData,
+             voronoi_overlay: np.ndarray = None,
+             heatmap_overlay: np.ndarray = None,
+             compactness_overlay: np.ndarray = None,
+             shadow_overlay: np.ndarray = None,
+             centroid_overlay: np.ndarray = None,
              width_length_overlay: np.ndarray = None,
-             show_velocity: bool = True, 
-             show_pressure: bool = False) -> np.ndarray:
+             show_velocity: bool = True,
+             show_pressure: bool = False,
+             # M1 overlays
+             shot_map_overlay: np.ndarray = None,
+             zone_14_overlay: np.ndarray = None,
+             pass_sonar_overlay: np.ndarray = None,
+             buildup_overlay: np.ndarray = None) -> np.ndarray:
         """
         Draws the minimap for the current frame.
         :param frame_data: Frame data
@@ -95,6 +102,16 @@ class MinimapRenderer:
         # 0.9 Overlay Team Centroid (if any)
         if centroid_overlay is not None:
             self._overlay_image(minimap, centroid_overlay)
+
+        # M1 overlays (drawn before players so dots sit on top)
+        if buildup_overlay is not None:
+            self._overlay_image(minimap, buildup_overlay)
+        if zone_14_overlay is not None:
+            self._overlay_image(minimap, zone_14_overlay)
+        if shot_map_overlay is not None:
+            self._overlay_image(minimap, shot_map_overlay)
+        if pass_sonar_overlay is not None:
+            self._overlay_image(minimap, pass_sonar_overlay)
 
         # 1. Draw Players
         for p in frame_data.players:
