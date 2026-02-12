@@ -77,8 +77,10 @@ def train(args):
 if __name__ == "__main__":
     # Default configuration for Football Player Detection
     
-    # Use the dataset's built-in data.yaml
-    dataset_config_path = "/Users/dreaner/Dev/Tactix/datasets/football-players-detection.v20-rf-detr-m.yolo26/data.yaml"
+    # Use the dataset's built-in data.yaml (relative to project root)
+    _script_dir = os.path.dirname(os.path.abspath(__file__))
+    _project_root = os.path.abspath(os.path.join(_script_dir, "../../"))
+    dataset_config_path = os.path.join(_project_root, "datasets/football-players-detection.v20-rf-detr-m.yolo26/data.yaml")
     
     parser = argparse.ArgumentParser(description="Train YOLO Detector")
     

@@ -45,6 +45,12 @@ from tactix.visualization.overlays.attacking.shot_map import ShotMapOverlay
 from tactix.visualization.overlays.attacking.zone_14 import Zone14Overlay
 from tactix.visualization.overlays.attacking.pass_sonar import PassSonarOverlay
 from tactix.visualization.overlays.attacking.buildup import BuildupOverlay
+from tactix.analytics.transition.transition_tracker import TransitionTracker
+from tactix.visualization.overlays.transition.transition import TransitionOverlay
+from tactix.analytics.defense.duel_heatmap import DuelHeatmap
+from tactix.visualization.overlays.defense.duel_heatmap import DuelHeatmapOverlay
+from tactix.analytics.set_pieces.set_piece_analyzer import CornerAnalyzer, FreeKickAnalyzer
+from tactix.visualization.overlays.set_pieces.set_pieces import SetPiecesOverlay
 
 
 class TactixEngine:
@@ -115,6 +121,14 @@ class TactixEngine:
         self.zone_analyzer = ZoneAnalyzer(self.cfg)
         self.pass_sonar = PassSonar()
         self.buildup_tracker = BuildupTracker(self.cfg)
+
+        # ==========================================
+        # 6. M2/M3/M4 Phase Modules
+        # ==========================================
+        self.transition_tracker = TransitionTracker(self.cfg)
+        self.duel_heatmap = DuelHeatmap()
+        self.corner_analyzer = CornerAnalyzer(self.cfg)
+        self.free_kick_analyzer = FreeKickAnalyzer(self.cfg)
 
     def _init_annotators(self):
         """Initialize Supervision annotators and color palette."""
@@ -358,6 +372,37 @@ class TactixEngine:
         if self.cfg.SHOW_BUILDUP:
             overlays.buildup = BuildupOverlay.render(self.buildup_tracker, cw, ch)
 
+        # ==========================================
+        # M2 — Transition Phases
+        # ==========================================
+        if events is not None:
+            self.transition_tracker.update(frame_data.frame_index, events)
+
+        if self.cfg.SHOW_TRANSITION:
+            overlays.transition = TransitionOverlay.render(self.transition_tracker, cw, ch)
+
+        # ==========================================
+        # M3 — Defense Phase
+        # ==========================================
+        if events is not None:
+            for duel in events.duels:
+                self.duel_heatmap.record(duel)
+
+        if self.cfg.SHOW_DUEL_HEATMAP:
+            overlays.duel_heatmap = DuelHeatmapOverlay.render(self.duel_heatmap)
+
+        # ==========================================
+        # M4 — Set Pieces
+        # ==========================================
+        if events is not None:
+            self.corner_analyzer.update(frame_data.frame_index, events)
+            self.free_kick_analyzer.update(frame_data.frame_index, events)
+
+        if self.cfg.SHOW_SET_PIECES:
+            overlays.set_pieces = SetPiecesOverlay.render(
+                self.corner_analyzer, self.free_kick_analyzer, cw, ch
+            )
+
         return overlays
 
     def _stage_visualization(
@@ -437,6 +482,9 @@ class TactixEngine:
                 zone_14_overlay=overlays.zone_14,
                 pass_sonar_overlay=overlays.pass_sonar,
                 buildup_overlay=overlays.buildup,
+                transition_overlay=overlays.transition,
+                duel_heatmap_overlay=overlays.duel_heatmap,
+                set_pieces_overlay=overlays.set_pieces,
             )
             h, w, _ = minimap.shape
             target_w = 300

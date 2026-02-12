@@ -63,7 +63,11 @@ class MinimapRenderer:
              shot_map_overlay: np.ndarray = None,
              zone_14_overlay: np.ndarray = None,
              pass_sonar_overlay: np.ndarray = None,
-             buildup_overlay: np.ndarray = None) -> np.ndarray:
+             buildup_overlay: np.ndarray = None,
+             # M2/M3/M4 overlays
+             transition_overlay: np.ndarray = None,
+             duel_heatmap_overlay: np.ndarray = None,
+             set_pieces_overlay: np.ndarray = None) -> np.ndarray:
         """
         Draws the minimap for the current frame.
         :param frame_data: Frame data
@@ -112,6 +116,14 @@ class MinimapRenderer:
             self._overlay_image(minimap, shot_map_overlay)
         if pass_sonar_overlay is not None:
             self._overlay_image(minimap, pass_sonar_overlay)
+
+        # M2/M3/M4 overlays
+        if duel_heatmap_overlay is not None:
+            self._overlay_image(minimap, duel_heatmap_overlay)
+        if transition_overlay is not None:
+            self._overlay_image(minimap, transition_overlay)
+        if set_pieces_overlay is not None:
+            self._overlay_image(minimap, set_pieces_overlay)
 
         # 1. Draw Players
         for p in frame_data.players:

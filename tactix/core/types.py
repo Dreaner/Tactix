@@ -218,3 +218,9 @@ class TacticalOverlays:
     zone_14:      Optional[np.ndarray] = None
     pass_sonar:   Optional[np.ndarray] = None
     buildup:      Optional[np.ndarray] = None
+    # M2 — Transition phase overlays
+    transition:   Optional[np.ndarray] = None
+    # M3 — Defense phase overlays
+    duel_heatmap: Optional[np.ndarray] = None
+    # M4 — Set piece overlays
+    set_pieces:   Optional[np.ndarray] = None

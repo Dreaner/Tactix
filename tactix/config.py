@@ -128,5 +128,13 @@ class Config:
     SHOW_PASS_SONAR: bool = False
     SHOW_ZONE_14: bool = False
     SHOW_BUILDUP: bool = False
+    SHOW_TRANSITION: bool = False
     SHOW_DUEL_HEATMAP: bool = False
     SHOW_SET_PIECES: bool = False
+
+    # === Transition Parameters ===
+    TRANSITION_ATTACK_MAX_FRAMES: int = 450   # ≈ 15 s at 30 fps
+    TRANSITION_DEFEND_MAX_FRAMES: int = 900   # ≈ 30 s at 30 fps
+
+    # === Set Piece Parameters ===
+    SET_PIECE_WINDOW_FRAMES: int = 300        # ≈ 10 s at 30 fps
