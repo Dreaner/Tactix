@@ -1,64 +1,229 @@
-# Tactix: Automated Football Tactical Analysis Engine
+# Tactix — Automated Football Tactical Analysis Engine
 
-Tactix is a computer vision-based system designed to analyze football broadcast videos. It automatically detects players, tracks their movements, classifies teams, and generates tactical visualizations such as 2D minimaps, passing networks, and heatmaps.
+<p align="center">
+  <strong>Turn broadcast footage into tactical intelligence.</strong><br>
+  Computer vision pipeline that detects players, tracks movements, classifies teams,<br>
+  and generates 2D tactical minimaps with rich analytical overlays.
+</p>
 
-## 🚀 Features
+---
 
-*   **Player Detection & Tracking**: Uses YOLOv8 and ByteTrack to detect and track players, referees, and the ball.
-*   **Team Classification**: Automatically groups players into two teams based on jersey color using K-Means clustering.
-*   **Pitch Calibration**:
-    *   **AI Mode**: Automatic keypoint detection using a custom YOLO-Pose model.
-    *   **Manual Mode**: Interactive tool to manually select keypoints for high-precision calibration.
-    *   **Panorama Mode**: Tracks camera movement (Pan/Tilt/Zoom) to maintain calibration even when keypoints move out of view.
-*   **Tactical Analysis**:
-    *   **Minimap Generation**: Real-time 2D top-down view of the game.
-    *   **Passing Network**: Visualizes potential passing lanes between teammates.
-    *   **Space Control (Voronoi)**: Visualizes which team controls which areas of the pitch.
-    *   **Heatmaps**: Cumulative heatmap of player movement.
-    *   **Velocity Vectors**: Displays player movement direction and speed.
-*   **Data Export**: Exports detailed tracking data (coordinates, teams, velocity) to JSON for external analysis.
+## Features
 
-## 🛠️ Tech Stack
+### Core Vision Pipeline
 
-*   **Language**: Python 3.12+
-*   **Computer Vision**: OpenCV, Ultralytics YOLOv8, Supervision
-*   **Data Processing**: NumPy, Scikit-learn, SciPy
+- **Player & Ball Detection** — YOLOv8 / YOLO26x detects players, goalkeepers, referees, and the ball in every frame
+- **Multi-Object Tracking** — ByteTrack (via Supervision) assigns persistent IDs across frames with occlusion handling
+- **Team Classification** — K-Means clustering on jersey colors with cross-frame voting (`PlayerRegistry`); confirms team after 5 frames with ≥70% majority
+- **Jersey Number OCR** — EasyOCR-based detection (0–99) with multi-ROI crops, CLAHE/binary preprocessing, and two-digit recovery heuristic; runs every Nth frame for performance
+- **Ball Interpolation** — Forward-projects ball position during detection gaps (up to 10 frames) via linear extrapolation
 
-## 🚦 Getting Started
+### Pitch Calibration
 
-### 1. Installation
+| Mode | Description |
+|------|-------------|
+| **AI Only** | Fully automatic — YOLO-Pose detects 27 pitch keypoints |
+| **Manual Fixed** | Interactive point selection + optical flow fallback |
+| **Panorama** | Manual initialization + global camera motion tracking (Pan/Tilt/Zoom) |
 
-Ensure you have Python 3.12+ installed.
+Computes a 3×3 homography matrix to map pixel coordinates to real-world pitch coordinates (105×68m).
+
+### Tactical Analysis
+
+| Module | Description |
+|--------|-------------|
+| **Voronoi / Space Control** | Which team dominates which area of the pitch |
+| **Heatmap** | Cumulative movement density per team |
+| **Pass Network** | Passing lane frequency graph between teammates |
+| **Pressure Index** | Defensive pressure (opponent count within configurable radius) |
+| **Cover Shadow** | Blocked passing lanes visualization |
+| **Team Compactness** | Convex hull of team shape |
+| **Team Centroid** | Center of mass for each team |
+| **Team Width & Length** | Spatial dimensions of team shape |
+| **Velocity Vectors** | Player movement direction and speed |
+
+### Phase Analysis
+
+| Phase | Modules |
+|-------|---------|
+| **Attacking** | Shot Map, Pass Sonar (8-sector directional), Zone 14 Analysis, Build-up Sequence Tracker |
+| **Defense** | Duel Heatmap (spatial distribution of 1v1 contests) |
+| **Transition** | Attack transitions (recovery → shot, ≤15s) and defensive transitions (loss → recovery, ≤30s) |
+| **Set Pieces** | Corner Kick Analyzer, Free Kick Analyzer (with wall detection and xG estimation) |
+
+### Formation Detection
+
+Detects team formations (4-3-3, 4-2-3-1, 3-5-2, etc.) via K-Means clustering on player positions; matched against 17+ canonical templates with sliding-window temporal smoothing.
+
+### Event Detection
+
+Automatically detects match events in real-time:
+
+- **Possession Changes** — Ball ownership transfer with confirmation delay
+- **Passes** — Intra-team ball transfers with origin, destination, distance, angle
+- **Shots** — High ball velocity toward goal with outcome classification (goal/saved/blocked/off-target)
+- **Duels** — 1v1 contests between opposing players with winner determination
+- **Corners** — Corner kicks with side, taker, and outcome tracking
+- **Free Kicks** — Defensive wall detection, xG estimation, outcome tracking
+
+### Data Export
+
+| Format | Output | Description |
+|--------|--------|-------------|
+| **JSON** | `tracking_data.json` | Per-frame player positions, teams, velocities |
+| **FIFA EPTS STF** | `match_metadata.xml` + `match_tracking.txt` | FIFA Standard Transfer Format — interoperable with industry tools. Center-origin coordinates in centimeters |
+| **PDF Report** | `match_report.pdf` | Multi-page post-match tactical report with stats and visualizations |
+| **Cache** | Pickle file | Optional frame-level tracking cache for re-processing |
+
+---
+
+## Tech Stack
+
+| Component | Technology |
+|-----------|-----------|
+| Language | Python 3.12+ |
+| Object Detection | Ultralytics YOLOv8 / YOLO26x |
+| Tracking | ByteTrack via Supervision |
+| Computer Vision | OpenCV (homography, optical flow, Voronoi, heatmaps) |
+| Team Classification | Scikit-learn K-Means |
+| Jersey OCR | EasyOCR (optional) |
+| PDF Reports | ReportLab + Pillow |
+| GPU | Apple Metal (`mps`), CUDA, or CPU |
+
+---
+
+## Getting Started
+
+### Installation
 
 ```bash
+# Python 3.12+ required
 pip install -r requirements.txt
+
+# Optional: Jersey number detection
+pip install easyocr>=1.7.1
 ```
 
-*(Note: You may need to install `ultralytics`, `supervision`, `opencv-python`, `numpy`, `scikit-learn`, `scipy`, `tqdm`)*
+### Configuration
 
-### 2. Configuration
+All settings are in `tactix/config.py`. Key options:
 
-Edit `tactix/config.py` to set your video paths and preferences:
+```python
+# Input / Output
+INPUT_VIDEO  = "assets/samples/test2.mp4"
+OUTPUT_VIDEO = "assets/output/test2_Result.mp4"
 
-*   `INPUT_VIDEO`: Path to your input football video.
-*   `OUTPUT_VIDEO`: Path to save the analyzed video.
-*   `CALIBRATION_MODE`: Choose between `CalibrationMode.AI_ONLY`, `MANUAL_FIXED`, or `PANORAMA`.
-*   `INTERACTIVE_MODE`: Set to `True` to enable the manual calibration tool at startup.
+# Device (GPU acceleration)
+DEVICE = "mps"  # "cuda" or "cpu"
 
-### 3. Running
+# Calibration
+CALIBRATION_MODE = CalibrationMode.PANORAMA  # AI_ONLY | MANUAL_FIXED | PANORAMA
+INTERACTIVE_MODE = False                      # True → manual point calibration UI
+
+# Export toggles
+EXPORT_DATA = True    # JSON tracking data
+EXPORT_STF  = False   # FIFA EPTS Standard Transfer Format
+EXPORT_PDF  = False   # PDF tactical report
+
+# FIFA STF metadata (used when EXPORT_STF = True)
+STF_MATCH_ID        = "TACTIX-001"
+STF_HOME_TEAM_NAME  = "Home"
+STF_AWAY_TEAM_NAME  = "Away"
+```
+
+### Running
 
 ```bash
 python run.py
 ```
 
-If `INTERACTIVE_MODE` is enabled:
-1.  A window will appear showing the first frame of the video.
-2.  Click on a distinct pitch landmark (e.g., corner flag, penalty box corner).
-3.  Look at the console and enter the corresponding ID for that landmark.
-4.  Repeat for at least 4 points.
-5.  Press `q` or `Esc` to start the analysis.
+**Interactive mode** (`INTERACTIVE_MODE = True`):
+1. First frame appears — click on visible pitch landmarks (corner flags, penalty box corners, etc.)
+2. Enter the corresponding keypoint ID shown in the console
+3. Repeat for at least 4 points
+4. Press `q` or `Esc` to start analysis
 
-## 📊 Output
+**Visualization menu** appears before processing:
+- Toggle overlays (Voronoi, Heatmap, Pass Network, etc.) by entering their number
+- Press `r` to run, `q` to quit
 
-*   **Video**: An annotated video showing the tactical overlay, minimap, and player tracking.
-*   **JSON Data**: A `tracking_data.json` file containing frame-by-frame player coordinates and metadata.
+---
+
+## Output
+
+| File | Description |
+|------|-------------|
+| `assets/output/*_Result.mp4` | Annotated video with tactical overlays and minimap |
+| `assets/output/tracking_data.json` | Frame-by-frame player coordinates and metadata |
+| `assets/output/stf/match_metadata.xml` | FIFA STF metadata (teams, rosters, jersey numbers) |
+| `assets/output/stf/match_tracking.txt` | FIFA STF raw tracking data (per-frame positions) |
+| `assets/output/match_report.pdf` | Multi-page tactical analysis report |
+
+---
+
+## Architecture
+
+### Pipeline Stages
+
+```
+Frame → Calibration → Detection → Ball Interpolation → Tracking → 
+Team Classification → Jersey OCR → Coordinate Mapping → 
+Event Detection → Tactical Analysis → Visualization → Export
+```
+
+### Data Flow
+
+All data flows through `FrameData` — one instance per frame, acting as the central data bus between pipeline stages. Side-channel state (`PlayerRegistry`, `BallStateTracker`, `EventDetector`) lives on the engine, not on the per-frame bus.
+
+### Project Structure
+
+```
+Tactix/
+├── run.py                          # Entry point
+├── requirements.txt
+├── tactix/
+│   ├── config.py                   # Central configuration
+│   ├── core/                       # Data types, keypoints, geometry, events, registry
+│   ├── engine/                     # TactixEngine — main pipeline loop
+│   ├── models/                     # Model interface abstraction
+│   ├── vision/
+│   │   ├── detector.py             # YOLO detection wrapper
+│   │   ├── tracker.py              # ByteTrack tracking wrapper
+│   │   ├── transformer.py          # Homography (pixel ↔ meters)
+│   │   ├── camera.py               # Optical flow camera stabilization
+│   │   └── calibration/            # AI, Manual, Panorama estimators
+│   ├── semantics/
+│   │   ├── team.py                 # K-Means team classification
+│   │   └── jersey_ocr.py           # Jersey number detection
+│   ├── analytics/
+│   │   ├── base/                   # Heatmap, pass network, pressure index
+│   │   ├── attacking/              # Shot map, pass sonar, zone 14, build-up
+│   │   ├── defense/                # Duel heatmap
+│   │   ├── transition/             # Attack/defense transition tracker
+│   │   ├── set_pieces/             # Corner & free kick analyzers
+│   │   ├── formation/              # Formation detector
+│   │   └── events/                 # Event detector (passes, shots, duels, etc.)
+│   ├── visualization/
+│   │   ├── minimap.py              # 2D tactical minimap renderer
+│   │   └── overlays/               # RGBA overlay renderers for each analysis module
+│   ├── export/
+│   │   ├── json_exporter.py        # JSON tracking data
+│   │   ├── stf_exporter.py         # FIFA EPTS Standard Transfer Format
+│   │   ├── pdf_exporter.py         # PDF tactical report
+│   │   └── cache.py                # Pickle tracking cache
+│   ├── ui/                         # Calibration UI, visualization menu
+│   └── utils/                      # Video I/O, pitch generation
+├── assets/
+│   ├── weights/                    # YOLO model weights
+│   ├── samples/                    # Input videos
+│   └── output/                     # Generated output
+├── datasets/                       # Training datasets
+├── training/                       # Model training scripts
+└── notebooks/                      # Experimentation
+```
+
+---
+
+## License
+
+See [LICENSE](LICENSE) for details.
