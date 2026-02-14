@@ -61,10 +61,6 @@ class Config:
     OUTPUT_VIDEO: str = "assets/output/test2_Result.mp4"
     PITCH_TEMPLATE: str = "assets/pitch_bg.png"
     
-    # Export Settings
-    EXPORT_DATA: bool = True
-    OUTPUT_JSON: str = "assets/output/tracking_data.json"
-
     # FIFA EPTS Standard Transfer Format Export
     EXPORT_STF: bool = False
     OUTPUT_STF_DIR: str = "assets/output/stf"

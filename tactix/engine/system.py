@@ -36,7 +36,6 @@ from tactix.vision.tracker import Tracker
 from tactix.vision.transformer import ViewTransformer
 from tactix.visualization.minimap import MinimapRenderer
 from tactix.vision.camera import CameraTracker
-from tactix.export.json_exporter import JsonExporter
 from tactix.export.pdf_exporter import PdfReportExporter
 from tactix.export.stf_exporter import StfExporter
 from tactix.analytics.events.event_detector import EventDetector
@@ -110,11 +109,6 @@ class TactixEngine:
         # ==========================================
         # 4. Export Module
         # ==========================================
-        self.exporter = None
-        if self.cfg.EXPORT_DATA:
-            print(f"💾 Data Export Enabled: {self.cfg.OUTPUT_JSON}")
-            self.exporter = JsonExporter(self.cfg.OUTPUT_JSON)
-
         self.pdf_exporter = None
         if self.cfg.EXPORT_PDF:
             print(f"📄 PDF Report Enabled: {self.cfg.OUTPUT_PDF}")
@@ -234,15 +228,11 @@ class TactixEngine:
                 canvas = self._stage_visualization(frame, frame_data, active_kps, has_matrix, overlays)
                 sink.write_frame(canvas)
 
-                if self.exporter:
-                    self.exporter.add_frame(frame_data)
                 if self.pdf_exporter:
                     self.pdf_exporter.add_frame(frame_data)
                 if self.stf_exporter:
                     self.stf_exporter.add_frame(frame_data)
 
-        if self.exporter:
-            self.exporter.save()
         if self.pdf_exporter:
             self.pdf_exporter.save()
         if self.stf_exporter:

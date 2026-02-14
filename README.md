@@ -70,7 +70,6 @@ Automatically detects match events in real-time:
 
 | Format | Output | Description |
 |--------|--------|-------------|
-| **JSON** | `tracking_data.json` | Per-frame player positions, teams, velocities |
 | **FIFA EPTS STF** | `match_metadata.xml` + `match_tracking.txt` | FIFA Standard Transfer Format — interoperable with industry tools. Center-origin coordinates in centimeters |
 | **PDF Report** | `match_report.pdf` | Multi-page post-match tactical report with stats and visualizations |
 | **Cache** | Pickle file | Optional frame-level tracking cache for re-processing |
@@ -121,7 +120,6 @@ CALIBRATION_MODE = CalibrationMode.PANORAMA  # AI_ONLY | MANUAL_FIXED | PANORAMA
 INTERACTIVE_MODE = False                      # True → manual point calibration UI
 
 # Export toggles
-EXPORT_DATA = True    # JSON tracking data
 EXPORT_STF  = False   # FIFA EPTS Standard Transfer Format
 EXPORT_PDF  = False   # PDF tactical report
 
@@ -154,7 +152,7 @@ python run.py
 | File | Description |
 |------|-------------|
 | `assets/output/*_Result.mp4` | Annotated video with tactical overlays and minimap |
-| `assets/output/tracking_data.json` | Frame-by-frame player coordinates and metadata |
+
 | `assets/output/stf/match_metadata.xml` | FIFA STF metadata (teams, rosters, jersey numbers) |
 | `assets/output/stf/match_tracking.txt` | FIFA STF raw tracking data (per-frame positions) |
 | `assets/output/match_report.pdf` | Multi-page tactical analysis report |
@@ -207,7 +205,6 @@ Tactix/
 │   │   ├── minimap.py              # 2D tactical minimap renderer
 │   │   └── overlays/               # RGBA overlay renderers for each analysis module
 │   ├── export/
-│   │   ├── json_exporter.py        # JSON tracking data
 │   │   ├── stf_exporter.py         # FIFA EPTS Standard Transfer Format
 │   │   ├── pdf_exporter.py         # PDF tactical report
 │   │   └── cache.py                # Pickle tracking cache
