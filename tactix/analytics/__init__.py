@@ -30,6 +30,8 @@ from tactix.analytics.set_pieces import (
     CornerAnalyzer, CornerSequence,
     FreeKickAnalyzer, FreeKickSequence,
 )
+# Formation (M5)
+from tactix.analytics.formation import FormationDetector
 
 __all__ = [
     # Base
@@ -46,4 +48,6 @@ __all__ = [
     # M4
     "CornerAnalyzer", "CornerSequence",
     "FreeKickAnalyzer", "FreeKickSequence",
+    # M5
+    "FormationDetector",
 ]

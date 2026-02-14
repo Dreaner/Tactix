@@ -29,3 +29,8 @@ datasets/
 
 /training/train/runs/
 notebooks/runs/detect/predict/test1.mp4
+
+assets/tactical_cam_footage/*
+
+# 忽略文档
+docs/

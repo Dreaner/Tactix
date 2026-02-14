@@ -4,3 +4,5 @@ opencv-python
 numpy
 scikit-learn
 tqdm
+reportlab>=4.0
+Pillow>=10.0

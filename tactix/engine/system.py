@@ -36,6 +36,7 @@ from tactix.vision.transformer import ViewTransformer
 from tactix.visualization.minimap import MinimapRenderer
 from tactix.vision.camera import CameraTracker
 from tactix.export.json_exporter import JsonExporter
+from tactix.export.pdf_exporter import PdfReportExporter
 from tactix.analytics.events.event_detector import EventDetector
 from tactix.analytics.attacking.shot_map import ShotMap
 from tactix.analytics.attacking.zone_analyzer import ZoneAnalyzer
@@ -51,6 +52,8 @@ from tactix.analytics.defense.duel_heatmap import DuelHeatmap
 from tactix.visualization.overlays.defense.duel_heatmap import DuelHeatmapOverlay
 from tactix.analytics.set_pieces.set_piece_analyzer import CornerAnalyzer, FreeKickAnalyzer
 from tactix.visualization.overlays.set_pieces.set_pieces import SetPiecesOverlay
+from tactix.analytics.formation.formation_detector import FormationDetector
+from tactix.visualization.overlays.formation.formation import FormationOverlay
 
 
 class TactixEngine:
@@ -108,6 +111,11 @@ class TactixEngine:
             print(f"💾 Data Export Enabled: {self.cfg.OUTPUT_JSON}")
             self.exporter = JsonExporter(self.cfg.OUTPUT_JSON)
 
+        self.pdf_exporter = None
+        if self.cfg.EXPORT_PDF:
+            print(f"📄 PDF Report Enabled: {self.cfg.OUTPUT_PDF}")
+            self.pdf_exporter = PdfReportExporter(self.cfg.OUTPUT_PDF, self.cfg)
+
         # State
         self.classifier_trained = False
         self.player_registry = PlayerRegistry()
@@ -129,6 +137,28 @@ class TactixEngine:
         self.duel_heatmap = DuelHeatmap()
         self.corner_analyzer = CornerAnalyzer(self.cfg)
         self.free_kick_analyzer = FreeKickAnalyzer(self.cfg)
+
+        # ==========================================
+        # 7. M5 Formation Detection
+        # ==========================================
+        self.formation_detector = FormationDetector(self.cfg)
+
+        # ==========================================
+        # 8. Attach analytics to PDF exporter (if enabled)
+        # ==========================================
+        if self.pdf_exporter:
+            self.pdf_exporter.attach_analytics(
+                shot_map=self.shot_map,
+                zone_analyzer=self.zone_analyzer,
+                pass_sonar=self.pass_sonar,
+                buildup_tracker=self.buildup_tracker,
+                transition_tracker=self.transition_tracker,
+                duel_heatmap=self.duel_heatmap,
+                corner_analyzer=self.corner_analyzer,
+                free_kick_analyzer=self.free_kick_analyzer,
+                heatmap=self.heatmap,
+                formation_detector=self.formation_detector,
+            )
 
     def _init_annotators(self):
         """Initialize Supervision annotators and color palette."""
@@ -176,9 +206,13 @@ class TactixEngine:
 
                 if self.exporter:
                     self.exporter.add_frame(frame_data)
+                if self.pdf_exporter:
+                    self.pdf_exporter.add_frame(frame_data)
 
         if self.exporter:
             self.exporter.save()
+        if self.pdf_exporter:
+            self.pdf_exporter.save()
 
         print(f"✅ Done! Saved to {self.cfg.OUTPUT_VIDEO}")
 
@@ -403,6 +437,13 @@ class TactixEngine:
                 self.corner_analyzer, self.free_kick_analyzer, cw, ch
             )
 
+        # ==========================================
+        # M5 — Formation Detection
+        # ==========================================
+        self.formation_detector.update(frame_data)
+        if self.cfg.SHOW_FORMATION:
+            overlays.formation = FormationOverlay.render(self.formation_detector, cw, ch)
+
         return overlays
 
     def _stage_visualization(
@@ -485,6 +526,7 @@ class TactixEngine:
                 transition_overlay=overlays.transition,
                 duel_heatmap_overlay=overlays.duel_heatmap,
                 set_pieces_overlay=overlays.set_pieces,
+                formation_overlay=overlays.formation,
             )
             h, w, _ = minimap.shape
             target_w = 300

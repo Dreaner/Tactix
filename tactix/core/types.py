@@ -224,3 +224,5 @@ class TacticalOverlays:
     duel_heatmap: Optional[np.ndarray] = None
     # M4 — Set piece overlays
     set_pieces:   Optional[np.ndarray] = None
+    # M5 — Formation overlay
+    formation:    Optional[np.ndarray] = None

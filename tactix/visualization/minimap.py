@@ -67,7 +67,8 @@ class MinimapRenderer:
              # M2/M3/M4 overlays
              transition_overlay: np.ndarray = None,
              duel_heatmap_overlay: np.ndarray = None,
-             set_pieces_overlay: np.ndarray = None) -> np.ndarray:
+             set_pieces_overlay: np.ndarray = None,
+             formation_overlay: np.ndarray = None) -> np.ndarray:
         """
         Draws the minimap for the current frame.
         :param frame_data: Frame data
@@ -124,6 +125,10 @@ class MinimapRenderer:
             self._overlay_image(minimap, transition_overlay)
         if set_pieces_overlay is not None:
             self._overlay_image(minimap, set_pieces_overlay)
+
+        # M5 — Formation labels (on top of other overlays, before players)
+        if formation_overlay is not None:
+            self._overlay_image(minimap, formation_overlay)
 
         # 1. Draw Players
         for p in frame_data.players:

@@ -131,6 +131,15 @@ class Config:
     SHOW_TRANSITION: bool = False
     SHOW_DUEL_HEATMAP: bool = False
     SHOW_SET_PIECES: bool = False
+    SHOW_FORMATION: bool = False
+
+    # === Formation Detection Parameters ===
+    FORMATION_WINDOW_FRAMES: int = 90    # ~3s at 30fps — sliding window for mode vote
+    FORMATION_MIN_PLAYERS: int = 8       # min outfield players needed per team
+
+    # === PDF Report Export ===
+    EXPORT_PDF: bool = False
+    OUTPUT_PDF: str = "assets/output/match_report.pdf"
 
     # === Transition Parameters ===
     TRANSITION_ATTACK_MAX_FRAMES: int = 450   # ≈ 15 s at 30 fps
