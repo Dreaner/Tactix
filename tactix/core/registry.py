@@ -37,6 +37,10 @@ class PlayerRecord:
     color_history: Deque = field(default_factory=lambda: deque(maxlen=20))
     team_vote_counts: Dict[TeamID, int] = field(default_factory=lambda: {TeamID.A: 0, TeamID.B: 0})
     confirmed: bool = False             # True once confidence threshold is met
+    
+    # Jersey OCR state
+    jersey_reads: Deque = field(default_factory=lambda: deque(maxlen=20))  # Recent OCR results
+    jersey_locked: bool = False         # True once jersey number is confirmed
 
 
 class PlayerRegistry:
@@ -135,6 +139,57 @@ class PlayerRegistry:
 
     def all_records(self) -> Dict[int, PlayerRecord]:
         return self._records
+
+    # ------------------------------------------------------------------
+    # Jersey number tracking
+    # ------------------------------------------------------------------
+
+    def record_jersey_read(self, tracker_id: int, number: str) -> None:
+        """Appends an OCR detection result for this player."""
+        record = self.get_or_create(tracker_id)
+        record.jersey_reads.append(number)
+
+    def get_jersey_number(self, tracker_id: int) -> Optional[str]:
+        """Returns the confirmed jersey number, or None if not locked."""
+        record = self._records.get(tracker_id)
+        if record is None or not record.jersey_locked:
+            return None
+        if not record.jersey_reads:
+            return None
+        # Return most common read
+        from collections import Counter
+        counts = Counter(record.jersey_reads)
+        return counts.most_common(1)[0][0]
+
+    def maybe_upgrade_jersey(self, tracker_id: int) -> bool:
+        """
+        Locks jersey number if ≥5 reads with ≥70% agreement.
+        Returns True if newly upgraded this call.
+        """
+        record = self._records.get(tracker_id)
+        if record is None or record.jersey_locked:
+            return False
+        
+        if len(record.jersey_reads) < 5:
+            return False
+        
+        from collections import Counter
+        counts = Counter(record.jersey_reads)
+        most_common, count = counts.most_common(1)[0]
+        ratio = count / len(record.jersey_reads)
+        
+        if ratio >= 0.70:
+            record.jersey_locked = True
+            return True
+        return False
+
+    def cleanup_stale(self, active_ids: set, max_age: int = 300) -> None:
+        """Removes records not seen in max_age frames (for memory management)."""
+        # Simple implementation: remove IDs not in active set
+        # More sophisticated: track last_seen frame and compare
+        stale = [tid for tid in self._records.keys() if tid not in active_ids]
+        for tid in stale:
+            del self._records[tid]
 
 
 # ==========================================

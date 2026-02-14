@@ -90,6 +90,9 @@ class Player:
     # Used for: Pass probability calculation (hard to pass backwards)
     orientation: Optional[Point] = None
     
+    # Jersey number (OCR-detected)
+    jersey_number: Optional[str] = None
+    
     # --- Tactical Info (Filled by Tactics Layer) ---
     # Pressure Index (0.0 - 1.0): How much pressure this player is under
     pressure: float = 0.0

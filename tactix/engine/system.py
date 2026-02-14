@@ -18,6 +18,7 @@ from tactix.config import Config, CalibrationMode, Colors
 from tactix.core.registry import PlayerRegistry, BallStateTracker
 from tactix.core.types import TeamID, Point, FrameData, TacticalOverlays
 from tactix.semantics.team import TeamClassifier
+from tactix.semantics.jersey_ocr import JerseyOCR
 from tactix.analytics.base.pass_network import PassNetwork
 from tactix.analytics.base.heatmap import HeatmapAccumulator
 from tactix.analytics.base.pressure_index import PressureIndex
@@ -90,6 +91,8 @@ class TactixEngine:
         # ==========================================
         self.transformer = ViewTransformer()
         self.team_classifier = TeamClassifier(device=self.cfg.DEVICE)
+        # Jersey OCR (with graceful degradation if easyocr not installed)
+        self.jersey_ocr = self._init_jersey_ocr()
         # Analytics
         self.pass_net = PassNetwork(self.cfg.MAX_PASS_DIST, self.cfg.BALL_OWNER_DIST)
         self.heatmap = HeatmapAccumulator()
@@ -160,6 +163,23 @@ class TactixEngine:
                 formation_detector=self.formation_detector,
             )
 
+    def _init_jersey_ocr(self):
+        """Initialize Jersey OCR with graceful degradation if dependencies missing."""
+        if not self.cfg.ENABLE_JERSEY_OCR:
+            return None
+        
+        try:
+            jersey_ocr = JerseyOCR(device=self.cfg.DEVICE)
+            print("🔢 Jersey OCR Enabled")
+            return jersey_ocr
+        except ImportError:
+            print("⚠️  Jersey OCR disabled: easyocr not installed")
+            print("    Install with: pip install easyocr>=1.7.1")
+            return None
+        except Exception as e:
+            print(f"⚠️  Jersey OCR disabled: {e}")
+            return None
+
     def _init_annotators(self):
         """Initialize Supervision annotators and color palette."""
         # EllipseAnnotator draws a colored arc at the base of each detection bbox (feet area).
@@ -195,6 +215,7 @@ class TactixEngine:
                 frame_data.ball = self.ball_state_tracker.update(i, frame_data.ball)
                 self._stage_tracking(frame_data)
                 self._stage_classification(frame, frame_data, i, has_matrix)
+                self._stage_jersey_detection(frame, frame_data, i)
 
                 overlays = TacticalOverlays()
                 if has_matrix:
@@ -338,6 +359,48 @@ class TactixEngine:
                 if closest.pitch_position.x > (105 - 16.5):
                     closest.team = TeamID.GOALKEEPER
 
+    def _stage_jersey_detection(self, frame: np.ndarray, frame_data: FrameData, frame_index: int) -> None:
+        """
+        Stage 3.5: Detect jersey numbers via OCR with registry-based voting.
+        
+        Runs every Nth frame (configured by JERSEY_OCR_FRAME_SKIP) for performance.
+        Uses the same voting pattern as team classification for stability.
+        """
+        if not self.cfg.ENABLE_JERSEY_OCR or self.jersey_ocr is None:
+            return
+        
+        # Skip frames for performance (jersey numbers don't change)
+        if frame_index % self.cfg.JERSEY_OCR_FRAME_SKIP != 0:
+            # Even when skipping OCR, apply confirmed numbers from registry
+            for p in frame_data.players:
+                if p.id != -1:
+                    p.jersey_number = self.player_registry.get_jersey_number(p.id)
+            return
+        
+        # Run OCR on eligible players
+        for p in frame_data.players:
+            pid = p.id
+            if pid == -1:
+                continue  # No stable ID to track
+            
+            # Skip referees and unknown team (focus on confirmed players)
+            if p.team in (TeamID.REFEREE, TeamID.UNKNOWN):
+                continue
+            
+            # Try OCR detection
+            detected = self.jersey_ocr.detect(
+                frame, p.rect,
+                self.cfg.JERSEY_MIN_CROP_H,
+                self.cfg.JERSEY_MIN_CROP_W
+            )
+            
+            if detected is not None:
+                self.player_registry.record_jersey_read(pid, detected)
+                self.player_registry.maybe_upgrade_jersey(pid)
+            
+            # Apply confirmed number (whether newly detected or previously locked)
+            p.jersey_number = self.player_registry.get_jersey_number(pid)
+
     def _stage_coordinate_mapping(self, frame_data: FrameData) -> None:
         """Stage 4: Project pixel coordinates to real-world pitch coordinates (meters)."""
         self.transformer.transform_players(frame_data.players)
@@ -477,16 +540,17 @@ class TactixEngine:
             for p in frame_data.players:
                 kmh = p.speed * 3.6
                 speed_str = f" {kmh:.1f}" if kmh > 0.5 else ""
+                jersey_str = f" J{p.jersey_number}" if p.jersey_number else ""
                 if p.team == TeamID.A:
-                    color_indices.append(0); labels.append(f"#{p.id}{speed_str}")
+                    color_indices.append(0); labels.append(f"#{p.id}{jersey_str}{speed_str}")
                 elif p.team == TeamID.B:
-                    color_indices.append(1); labels.append(f"#{p.id}{speed_str}")
+                    color_indices.append(1); labels.append(f"#{p.id}{jersey_str}{speed_str}")
                 elif p.team == TeamID.REFEREE:
                     color_indices.append(2); labels.append("Ref")
                 elif p.team == TeamID.GOALKEEPER:
-                    color_indices.append(3); labels.append(f"GK{speed_str}")
+                    color_indices.append(3); labels.append(f"GK{jersey_str}{speed_str}")
                 else:
-                    color_indices.append(4); labels.append(f"#{p.id}{speed_str}")
+                    color_indices.append(4); labels.append(f"#{p.id}{jersey_str}{speed_str}")
 
             sv_dets = sv.Detections(xyxy=xyxy, class_id=np.array(color_indices))
             self.ellipse_annotator.color = self.palette

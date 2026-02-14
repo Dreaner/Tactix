@@ -69,6 +69,12 @@ class Config:
     DEVICE: str = "mps"
     CONF_PITCH: float = 0.3
     CONF_PLAYER: float = 0.3
+    
+    # Jersey Number Detection (OCR-based player identification)
+    ENABLE_JERSEY_OCR: bool = True   # Auto-disabled if easyocr not installed
+    JERSEY_MIN_CROP_H: int = 40      # Skip OCR if bbox height too small
+    JERSEY_MIN_CROP_W: int = 30      # Skip OCR if bbox width too small
+    JERSEY_OCR_FRAME_SKIP: int = 10  # Run OCR every Nth frame for performance
 
     # === Tactical Parameters ===
     MAX_PASS_DIST: int = 400

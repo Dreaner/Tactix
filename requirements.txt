@@ -6,3 +6,7 @@ scikit-learn
 tqdm
 reportlab>=4.0
 Pillow>=10.0
+
+# Jersey OCR (Player identification enhancement)
+# Optional but recommended - auto-disabled if not installed
+easyocr>=1.7.1
