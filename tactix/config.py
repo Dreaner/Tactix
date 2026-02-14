@@ -65,6 +65,15 @@ class Config:
     EXPORT_DATA: bool = True
     OUTPUT_JSON: str = "assets/output/tracking_data.json"
 
+    # FIFA EPTS Standard Transfer Format Export
+    EXPORT_STF: bool = False
+    OUTPUT_STF_DIR: str = "assets/output/stf"
+    STF_MATCH_ID: str = "TACTIX-001"
+    STF_HOME_TEAM_NAME: str = "Home"
+    STF_AWAY_TEAM_NAME: str = "Away"
+    STF_VENUE: str = "Unknown Stadium"
+    STF_MATCH_DATE: str = ""  # Auto-filled from run timestamp if empty
+
     # === Model Parameters ===
     DEVICE: str = "mps"
     CONF_PITCH: float = 0.3

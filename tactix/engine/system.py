@@ -38,6 +38,7 @@ from tactix.visualization.minimap import MinimapRenderer
 from tactix.vision.camera import CameraTracker
 from tactix.export.json_exporter import JsonExporter
 from tactix.export.pdf_exporter import PdfReportExporter
+from tactix.export.stf_exporter import StfExporter
 from tactix.analytics.events.event_detector import EventDetector
 from tactix.analytics.attacking.shot_map import ShotMap
 from tactix.analytics.attacking.zone_analyzer import ZoneAnalyzer
@@ -118,6 +119,8 @@ class TactixEngine:
         if self.cfg.EXPORT_PDF:
             print(f"📄 PDF Report Enabled: {self.cfg.OUTPUT_PDF}")
             self.pdf_exporter = PdfReportExporter(self.cfg.OUTPUT_PDF, self.cfg)
+
+        self.stf_exporter = None  # Initialized in run() once FPS is known
 
         # State
         self.classifier_trained = False
@@ -204,6 +207,12 @@ class TactixEngine:
         video_info = sv.VideoInfo.from_video_path(self.cfg.INPUT_VIDEO)
         frames = sv.get_video_frames_generator(self.cfg.INPUT_VIDEO)
 
+        # Initialize STF exporter here (needs video FPS from video_info)
+        if self.cfg.EXPORT_STF:
+            fps = int(video_info.fps) if video_info.fps else 25
+            self.stf_exporter = StfExporter(self.cfg.OUTPUT_STF_DIR, self.cfg, fps=fps)
+            print(f"⚽ FIFA STF Export Enabled: {self.cfg.OUTPUT_STF_DIR}")
+
         print(f"▶️ Processing: {self.cfg.INPUT_VIDEO}")
         print(f"   - Total Frames: {video_info.total_frames}")
         print(f"   - Resolution: {video_info.width}x{video_info.height}")
@@ -229,11 +238,15 @@ class TactixEngine:
                     self.exporter.add_frame(frame_data)
                 if self.pdf_exporter:
                     self.pdf_exporter.add_frame(frame_data)
+                if self.stf_exporter:
+                    self.stf_exporter.add_frame(frame_data)
 
         if self.exporter:
             self.exporter.save()
         if self.pdf_exporter:
             self.pdf_exporter.save()
+        if self.stf_exporter:
+            self.stf_exporter.save(player_registry=self.player_registry)
 
         print(f"✅ Done! Saved to {self.cfg.OUTPUT_VIDEO}")
 
