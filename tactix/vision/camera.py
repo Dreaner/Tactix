@@ -47,8 +47,10 @@ class CameraTracker:
         :param smoothing_window: Size of the smoothing window
         """
         self.current_keypoints: Optional[np.ndarray] = None
+        self._num_points: int = 0
         if initial_keypoints is not None:
             self.current_keypoints = initial_keypoints.astype(np.float32).reshape(-1, 1, 2)
+            self._num_points = len(initial_keypoints)
             
         self.prev_gray: Optional[np.ndarray] = None
         
@@ -61,16 +63,39 @@ class CameraTracker:
         
         # Initialize smoother
         self.smoother = CameraSmoother(window_size=smoothing_window)
+        # Track which original indices are still alive
+        self._alive_mask: Optional[np.ndarray] = None
 
     def reset(self, keypoints: np.ndarray, frame: np.ndarray):
         """
         Force resets tracking points (usually called when YOLO detects high-confidence keypoints).
         """
         self.current_keypoints = keypoints.astype(np.float32).reshape(-1, 1, 2)
+        self._num_points = len(keypoints)
         self.prev_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        self._alive_mask = np.ones(self._num_points, dtype=bool)
         # Reset smoother history to avoid old datasets dragging down new position accuracy
         self.smoother = CameraSmoother(window_size=self.smoother.window_size)
         self.smoother.update(keypoints) # Immediately push current value
+
+    def soft_reset(self, keypoints: np.ndarray, frame: np.ndarray):
+        """
+        Gently updates tracking points from YOLO without destroying smoother history.
+        Replaces tracked positions with new YOLO detections while preserving the
+        smoothing window — avoids the "jump" that a hard reset causes.
+        """
+        new_pts = keypoints.astype(np.float32).reshape(-1, 1, 2)
+        if self.current_keypoints is not None and len(new_pts) == len(self.current_keypoints):
+            # Same shape — blend in-place, keep smoother
+            self.current_keypoints = new_pts
+        else:
+            # Shape changed — must hard reset
+            self.current_keypoints = new_pts
+            self._num_points = len(keypoints)
+            self.smoother = CameraSmoother(window_size=self.smoother.window_size)
+            self.smoother.update(keypoints)
+        self.prev_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        self._alive_mask = np.ones(len(new_pts), dtype=bool)
 
     def update(self, frame: np.ndarray) -> Optional[np.ndarray]:
         """
@@ -94,23 +119,26 @@ class CameraTracker:
             self.prev_gray, frame_gray, self.current_keypoints, None, **self.lk_params
         )
 
-        # Check tracking status
-        # status: 1=Found, 0=Not Found
-        if status is not None and np.all(status == 1):
-            self.current_keypoints = new_points
-            
-            # Get raw predicted points (N, 2)
-            raw_points = self.current_keypoints.reshape(-1, 2)
-            
-            # Apply smoothing
-            smoothed_points = self.smoother.update(raw_points)
-            
-            self.prev_gray = frame_gray
-            return smoothed_points
-        else:
-            # If lost (status contains 0), two strategies:
-            # 1. Return None, letting external system know to re-detect with YOLO
-            # 2. Temporarily keep previous frame position
-            # Here we choose to return None, forcing system recalibration
-            print("⚠️ Camera Tracker lost keypoints!")
-            return None
+        # Check tracking status — allow partial survival (≥ 4 points)
+        if status is not None:
+            alive = status.flatten().astype(bool)
+            n_alive = int(np.sum(alive))
+
+            if n_alive >= 4:
+                # Keep only the surviving points
+                if not np.all(alive):
+                    new_points = new_points[alive]
+                    self.current_keypoints = new_points
+                    # Rebuild smoother since point count changed
+                    self.smoother = CameraSmoother(window_size=self.smoother.window_size)
+                else:
+                    self.current_keypoints = new_points
+
+                raw_points = self.current_keypoints.reshape(-1, 2)
+                smoothed_points = self.smoother.update(raw_points)
+                self.prev_gray = frame_gray
+                return smoothed_points
+
+        # Fewer than 4 points survived — request recalibration
+        print("⚠️ Camera Tracker lost too many keypoints!")
+        return None

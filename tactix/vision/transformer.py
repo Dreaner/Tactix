@@ -15,12 +15,19 @@ from typing import List, Optional, Tuple
 from tactix.core.types import PitchConfig, Player
 from tactix.core.keypoints import YOLO_INDEX_MAP 
 from tactix.core.geometry import WORLD_POINTS
+from tactix.vision.filters import OneEuroFilter
 
 class ViewTransformer:
-    def __init__(self):
+    def __init__(self, smooth_enabled: bool = True, min_cutoff: float = 1.0, beta: float = 0.007):
         self.homography_matrix = None
         self.scale_x = PitchConfig.PIXEL_WIDTH / PitchConfig.LENGTH
         self.scale_y = PitchConfig.PIXEL_HEIGHT / PitchConfig.WIDTH
+
+        # Homography smoothing via OneEuroFilter (9-D: flattened 3×3 matrix)
+        self._smooth_enabled = smooth_enabled
+        self._h_filter: Optional[OneEuroFilter] = None
+        self._min_cutoff = min_cutoff
+        self._beta = beta
 
     def update(self, keypoints: np.ndarray, confs: np.ndarray, threshold: float = 0.5) -> bool:
         """
@@ -60,11 +67,33 @@ class ViewTransformer:
              # Secondary validation
              inliers = np.sum(mask)
              if inliers >= 4:
-                 self.homography_matrix = h # Update to new matrix
+                 if self._smooth_enabled:
+                     self.homography_matrix = self._smooth_homography(h)
+                 else:
+                     self.homography_matrix = h
                  return True
         
         # If new calculation is bad, continue using old one
         return self.homography_matrix is not None
+
+    def _smooth_homography(self, raw_h: np.ndarray) -> np.ndarray:
+        """
+        Apply OneEuroFilter to the 3×3 homography matrix (flattened to 9-D).
+        Initializes the filter lazily on the first valid matrix.
+        """
+        flat = raw_h.flatten()  # (9,)
+
+        if self._h_filter is None:
+            # First valid matrix — initialize the filter
+            self._h_filter = OneEuroFilter(
+                ndim=9,
+                rate=30.0,  # assumed video fps
+                min_cutoff=self._min_cutoff,
+                beta=self._beta,
+            )
+
+        smoothed = self._h_filter.filter(flat)
+        return smoothed.reshape(3, 3)
 
     def transform_point(self, xy: Tuple[float, float]) -> Optional[Tuple[int, int]]:
         # As long as there is a matrix (even an old one), calculate it!

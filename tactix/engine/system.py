@@ -32,6 +32,7 @@ from tactix.vision.detector import Detector
 from tactix.vision.calibration.ai_estimator import AIPitchEstimator
 from tactix.vision.calibration.manual_estimator import ManualPitchEstimator
 from tactix.vision.calibration.panorama_estimator import PanoramaPitchEstimator
+from tactix.vision.calibration.hybrid_estimator import HybridPitchEstimator
 from tactix.vision.tracker import Tracker
 from tactix.vision.transformer import ViewTransformer
 from tactix.visualization.minimap import MinimapRenderer
@@ -76,6 +77,16 @@ class TactixEngine:
             elif self.cfg.CALIBRATION_MODE == CalibrationMode.PANORAMA:
                 print("🌐 Mode: Panorama Calibration")
                 self.pitch_estimator = PanoramaPitchEstimator(manual_keypoints)
+            elif self.cfg.CALIBRATION_MODE == CalibrationMode.HYBRID:
+                print("🔀 Mode: Hybrid Calibration (AI + ORB)")
+                self.pitch_estimator = HybridPitchEstimator(
+                    model_path=self.cfg.PITCH_MODEL_PATH,
+                    device=self.cfg.DEVICE,
+                    orb_features=self.cfg.HYBRID_ORB_FEATURES,
+                    max_drift_frames=self.cfg.HYBRID_MAX_DRIFT_FRAMES,
+                    anchor_threshold=self.cfg.HYBRID_YOLO_ANCHOR_THRESHOLD,
+                    conf_pitch=self.cfg.CONF_PITCH,
+                )
             else:
                 print("🤖 Mode: AI Auto Calibration")
                 self.pitch_estimator = AIPitchEstimator(self.cfg.PITCH_MODEL_PATH, self.cfg.DEVICE)
@@ -89,7 +100,11 @@ class TactixEngine:
         # ==========================================
         # 2. Logic Modules
         # ==========================================
-        self.transformer = ViewTransformer()
+        self.transformer = ViewTransformer(
+            smooth_enabled=self.cfg.HOMOGRAPHY_SMOOTH_ENABLED,
+            min_cutoff=self.cfg.HOMOGRAPHY_MIN_CUTOFF,
+            beta=self.cfg.HOMOGRAPHY_BETA,
+        )
         self.team_classifier = TeamClassifier(device=self.cfg.DEVICE)
         # Jersey OCR (with graceful degradation if easyocr not installed)
         self.jersey_ocr = self._init_jersey_ocr()
@@ -317,13 +332,25 @@ class TactixEngine:
 
         if self.cfg.CALIBRATION_MODE == CalibrationMode.AI_ONLY:
             if pitch_keypoints is not None and len(pitch_keypoints) >= 4:
-                self.camera_tracker.reset(pitch_keypoints, frame)
+                self.camera_tracker.soft_reset(pitch_keypoints, frame)
                 active_keypoints = pitch_keypoints
             else:
                 tracked = self.camera_tracker.update(frame)
                 if tracked is not None:
                     active_keypoints = tracked
                     keypoint_confidences = np.ones(len(active_keypoints))
+        elif self.cfg.CALIBRATION_MODE == CalibrationMode.HYBRID:
+            # HybridEstimator handles ORB fusion internally — use its output directly
+            active_keypoints = pitch_keypoints
+            # Fall back to CameraTracker only if Hybrid also failed completely
+            if active_keypoints is None:
+                tracked = self.camera_tracker.update(frame)
+                if tracked is not None:
+                    active_keypoints = tracked
+                    keypoint_confidences = np.ones(len(active_keypoints))
+            else:
+                # Keep CameraTracker in sync for potential future fallback
+                self.camera_tracker.soft_reset(pitch_keypoints, frame)
         else:
             active_keypoints = pitch_keypoints
 

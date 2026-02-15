@@ -16,7 +16,7 @@ class CalibrationMode(Enum):
     AI_ONLY = "ai"             # Pure AI (YOLO)
     MANUAL_FIXED = "manual"    # Pure Manual (Fixed points tracking)
     PANORAMA = "panorama"      # Panorama (Manual Init + Global Motion)
-    # HYBRID = "hybrid"        # Future work
+    HYBRID = "hybrid"          # AI + ORB motion tracking fusion
 
 @dataclass
 class Colors:
@@ -92,7 +92,7 @@ class Config:
     INTERACTIVE_MODE: bool = True
     
     # Current Calibration Mode
-    CALIBRATION_MODE: CalibrationMode = CalibrationMode.PANORAMA
+    CALIBRATION_MODE: CalibrationMode = CalibrationMode.HYBRID
     
     # Legacy flag (kept for compatibility, but logic moved to CALIBRATION_MODE)
     USE_MOCK_PITCH: bool = True 
@@ -126,6 +126,16 @@ class Config:
     # === Cache Settings ===
     ENABLE_CACHE: bool = False
     CACHE_DIR: str = "assets/cache"
+
+    # === Hybrid Estimator Settings ===
+    HYBRID_ORB_FEATURES: int = 1000       # ORB features for motion tracking (more = better for fast pan)
+    HYBRID_MAX_DRIFT_FRAMES: int = 30     # Max frames of pure-ORB before confidence drops to 0
+    HYBRID_YOLO_ANCHOR_THRESHOLD: int = 4 # Min YOLO points to trigger ORB tracker reset
+
+    # === Homography Smoothing (OneEuroFilter) ===
+    HOMOGRAPHY_SMOOTH_ENABLED: bool = True
+    HOMOGRAPHY_MIN_CUTOFF: float = 1.0    # Lower = smoother when camera is still
+    HOMOGRAPHY_BETA: float = 0.007        # Higher = less lag during fast pans
 
     # === Zone Definitions (meters) ===
     # Zone 14: area directly in front of the penalty box
