@@ -34,3 +34,8 @@ assets/tactical_cam_footage/*
 
 # 忽略文档
 docs/
+
+# Build / Distribution
+dist/
+build/
+*.egg-info/

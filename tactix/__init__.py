@@ -16,4 +16,5 @@ Quick start::
 from tactix.config import CalibrationMode, Config
 from tactix.engine.system import TactixEngine
 
-__all__ = ["TactixEngine", "Config", "CalibrationMode"]
+__version__ = "0.1.0"
+__all__ = ["TactixEngine", "Config", "CalibrationMode", "__version__"]
