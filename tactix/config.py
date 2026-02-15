@@ -112,6 +112,13 @@ class Config:
     SHOW_TEAM_WIDTH_LENGTH: bool = False
     SHOW_DEBUG_KEYPOINTS: bool = False
 
+    # === Color Pre-Scan Settings ===
+    # Pre-scan the video to collect jersey colors before the main pipeline.
+    # This produces a much more stable K-Means classifier.
+    ENABLE_COLOR_PRESCAN: bool = True
+    PRESCAN_NUM_FRAMES: int = 30      # How many frames to sample across the video
+    PRESCAN_MIN_PLAYERS: int = 4      # Min players per frame to include in training data
+
     # === Tracking & Interpolation Settings ===
     # Max consecutive frames the ball can be missing before interpolation stops.
     BALL_INTERP_MAX_GAP: int = 10

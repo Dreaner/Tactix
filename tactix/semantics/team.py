@@ -73,6 +73,27 @@ class TeamClassifier:
                     label = self.kmeans.predict([color])[0]
                     p.team = TeamID.A if label == 0 else TeamID.B
 
+    def fit_from_colors(self, colors: List[np.ndarray]) -> bool:
+        """
+        Train K-Means from a pre-collected list of shirt color vectors.
+        Used by the pre-scan pass so the classifier is ready before the main loop.
+        Returns True if training succeeded.
+        """
+        if len(colors) < 2:
+            return False
+
+        data = np.array(colors)
+        self.kmeans = KMeans(n_clusters=2, n_init=10, random_state=0)
+        self.kmeans.fit(data)
+
+        self.team_colors[TeamID.A] = self.kmeans.cluster_centers_[0]
+        self.team_colors[TeamID.B] = self.kmeans.cluster_centers_[1]
+
+        print(f"✅ Team Colors Learned (pre-scan, {len(colors)} samples):")
+        print(f"   A = {self.team_colors[TeamID.A].astype(int)}")
+        print(f"   B = {self.team_colors[TeamID.B].astype(int)}")
+        return True
+
     def predict_one(self, color: np.ndarray) -> TeamID:
         """
         Predict the team for a single pre-extracted color vector.

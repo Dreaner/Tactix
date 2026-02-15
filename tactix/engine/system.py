@@ -196,10 +196,73 @@ class TactixEngine:
     # Main Loop
     # ==========================================
 
+    def _prescan_team_colors(self, video_info: sv.VideoInfo) -> None:
+        """
+        Pre-scan pass: sample frames across the video, detect players,
+        collect shirt colors, and train K-Means before the main loop.
+
+        This produces a far more stable classifier than training on only
+        the first ~30 frames, because it sees diverse lighting, camera
+        angles, and player groupings from the entire video.
+        """
+        if not self.cfg.ENABLE_COLOR_PRESCAN:
+            return
+
+        total = video_info.total_frames
+        n = min(self.cfg.PRESCAN_NUM_FRAMES, total)
+        if n < 2:
+            return
+
+        # Compute frame indices evenly spaced across the video
+        indices = np.linspace(0, total - 1, n, dtype=int)
+        # Avoid sampling from the very first / very last frame
+        # (broadcast intros / credits are common there)
+        margin = max(1, int(total * 0.02))
+        indices = indices[(indices >= margin) & (indices <= total - margin)]
+
+        print(f"🎨 Pre-scanning {len(indices)} frames for team colors...")
+
+        cap = cv2.VideoCapture(self.cfg.INPUT_VIDEO)
+        all_colors: list[np.ndarray] = []
+
+        for idx in tqdm(indices, desc="Pre-scan"):
+            cap.set(cv2.CAP_PROP_POS_FRAMES, int(idx))
+            ret, frame = cap.read()
+            if not ret:
+                continue
+
+            # Detect players (lightweight — no tracking, no calibration)
+            frame_data = self.detector.detect(frame, int(idx))
+            outfield = [p for p in frame_data.players if p.class_id == 2]
+
+            if len(outfield) < self.cfg.PRESCAN_MIN_PLAYERS:
+                continue
+
+            for p in outfield:
+                color = self.team_classifier._extract_shirt_color(frame, p.rect)
+                if color is not None:
+                    all_colors.append(color)
+
+        cap.release()
+
+        if not all_colors:
+            print("⚠️  Pre-scan collected no colors — will fall back to per-frame training.")
+            return
+
+        ok = self.team_classifier.fit_from_colors(all_colors)
+        if ok:
+            self.classifier_trained = True
+            print(f"🎨 Pre-scan complete: classifier ready ({len(all_colors)} samples from {len(indices)} frames)")
+        else:
+            print("⚠️  Pre-scan K-Means failed — will fall back to per-frame training.")
+
     def run(self):
         """Main processing loop — delegates each frame to focused stage methods."""
         video_info = sv.VideoInfo.from_video_path(self.cfg.INPUT_VIDEO)
         frames = sv.get_video_frames_generator(self.cfg.INPUT_VIDEO)
+
+        # === Pre-scan: learn team colors from the whole video ===
+        self._prescan_team_colors(video_info)
 
         # Initialize STF exporter here (needs video FPS from video_info)
         if self.cfg.EXPORT_STF:
@@ -284,14 +347,15 @@ class TactixEngine:
         self, frame: np.ndarray, frame_data: FrameData, frame_index: int, has_matrix: bool
     ) -> None:
         """Stage 3: Train team classifier then assign teams via persistent registry voting."""
-        # --- Training window (unchanged logic) ---
-        training_candidates = [
-            p for p in frame_data.players if p.class_id == 2 and p.team == TeamID.UNKNOWN
-        ]
-        if not self.classifier_trained and len(training_candidates) > 3 and frame_index < 30:
-            self.team_classifier.fit(frame, training_candidates)
-            if frame_index > 15:
-                self.classifier_trained = True
+        # --- Training window (fallback when pre-scan is disabled or failed) ---
+        if not self.classifier_trained:
+            training_candidates = [
+                p for p in frame_data.players if p.class_id == 2 and p.team == TeamID.UNKNOWN
+            ]
+            if len(training_candidates) > 3 and frame_index < 30:
+                self.team_classifier.fit(frame, training_candidates)
+                if frame_index > 15:
+                    self.classifier_trained = True
 
         if not self.classifier_trained:
             return
