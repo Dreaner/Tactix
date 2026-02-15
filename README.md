@@ -70,7 +70,7 @@ Automatically detects match events in real-time:
 
 | Format | Output | Description |
 |--------|--------|-------------|
-| **FIFA EPTS STF** | `match_metadata.xml` + `match_tracking.txt` | FIFA Standard Transfer Format — interoperable with industry tools. Center-origin coordinates in centimeters |
+| **FIFA EPTS STF** | `match_metadata.xml` + `match_tracking.dat` | Tracab-compatible tracking data, loadable via [kloppy](https://github.com/PySport/kloppy). Center-origin coordinates in centimeters |
 | **PDF Report** | `match_report.pdf` | Multi-page post-match tactical report with stats and visualizations |
 | **Cache** | Pickle file | Optional frame-level tracking cache for re-processing |
 
@@ -153,9 +153,22 @@ python run.py
 |------|-------------|
 | `assets/output/*_Result.mp4` | Annotated video with tactical overlays and minimap |
 
-| `assets/output/stf/match_metadata.xml` | FIFA STF metadata (teams, rosters, jersey numbers) |
-| `assets/output/stf/match_tracking.txt` | FIFA STF raw tracking data (per-frame positions) |
+| `assets/output/stf/match_metadata.xml` | Tracab-compatible metadata (teams, rosters, jersey numbers) |
+| `assets/output/stf/match_tracking.dat` | Tracab DAT raw tracking data (per-frame positions & speeds) |
 | `assets/output/match_report.pdf` | Multi-page tactical analysis report |
+
+#### Loading tracking data with kloppy
+
+```python
+from kloppy import tracab
+
+dataset = tracab.load(
+    meta_data="assets/output/stf/match_metadata.xml",
+    raw_data="assets/output/stf/match_tracking.dat",
+)
+df = dataset.to_df()
+print(df.head())
+```
 
 ---
 

@@ -62,7 +62,7 @@ class Config:
     PITCH_TEMPLATE: str = "assets/pitch_bg.png"
     
     # FIFA EPTS Standard Transfer Format Export
-    EXPORT_STF: bool = False
+    EXPORT_STF: bool = True
     OUTPUT_STF_DIR: str = "assets/output/stf"
     STF_MATCH_ID: str = "TACTIX-001"
     STF_HOME_TEAM_NAME: str = "Home"
@@ -89,7 +89,7 @@ class Config:
     SHADOW_ANGLE: float = 20.0 # Degrees
 
     # === Calibration Settings ===
-    INTERACTIVE_MODE: bool = False
+    INTERACTIVE_MODE: bool = True
     
     # Current Calibration Mode
     CALIBRATION_MODE: CalibrationMode = CalibrationMode.PANORAMA
@@ -98,7 +98,7 @@ class Config:
     USE_MOCK_PITCH: bool = True 
 
 # === Visualization Settings (Default State) ===
-    GEOMETRY_ENABLED: bool = False # Master switch for pitch calibration/minimap
+    GEOMETRY_ENABLED: bool = True # Master switch for pitch calibration/minimap
     
     SHOW_MINIMAP: bool = False
     SHOW_VORONOI: bool = False
@@ -149,7 +149,7 @@ class Config:
     FORMATION_MIN_PLAYERS: int = 8       # min outfield players needed per team
 
     # === PDF Report Export ===
-    EXPORT_PDF: bool = False
+    EXPORT_PDF: bool = True
     OUTPUT_PDF: str = "assets/output/match_report.pdf"
 
     # === Transition Parameters ===
