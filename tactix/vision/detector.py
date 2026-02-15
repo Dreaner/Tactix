@@ -40,15 +40,14 @@ class Detector:
         }
 
     def detect(self, frame: np.ndarray, frame_index: int) -> FrameData:
-        # 1. Enable TTA (Test Time Augmentation) + High Resolution
+        # 1. High Resolution inference
         results = self.model(
             frame, 
             device=self.device, 
             verbose=False, 
-            conf=self.conf_threshold, # Use base threshold here
+            conf=self.conf_threshold,
             iou=self.iou_threshold,
-            imgsz=1280,   # HD mode
-            augment=True  # TTA augmentation
+            imgsz=1280,
         )[0]
         
         detections = sv.Detections.from_ultralytics(results)
