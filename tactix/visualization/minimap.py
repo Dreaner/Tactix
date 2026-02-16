@@ -12,6 +12,7 @@ Description:
 
 import cv2
 import numpy as np
+from typing import Callable, Optional
 
 from tactix.core.types import FrameData, TeamID, PitchConfig
 from tactix.config import Colors
@@ -68,7 +69,8 @@ class MinimapRenderer:
              transition_overlay: np.ndarray = None,
              duel_heatmap_overlay: np.ndarray = None,
              set_pieces_overlay: np.ndarray = None,
-             formation_overlay: np.ndarray = None) -> np.ndarray:
+             formation_overlay: np.ndarray = None,
+             display_label_fn: Optional[Callable[[int], str]] = None) -> np.ndarray:
         """
         Draws the minimap for the current frame.
         :param frame_data: Frame data
@@ -170,22 +172,22 @@ class MinimapRenderer:
                 # Inner circle (Team color or Pressure color)
                 cv2.circle(minimap, (mx, my), 12, color, -1)
                 
-                # # Draw Number (REMOVED)
-                # if p.id != -1:
-                #     text = str(p.id)
-                #     font_scale = 0.8
-                #     thickness = 2
-                #     (tw, th), _ = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, font_scale, thickness)
-                #     # Center text
-                #     tx = mx - tw // 2
-                #     ty = my + th // 2 - 2
-                #     
-                #     # Text color: White for most, Black for light backgrounds (like Yellow Referee)
-                #     text_color = Colors.to_bgr(Colors.TEXT)
-                #     if p.team == TeamID.REFEREE: 
-                #         text_color = (0, 0, 0)
-                #     
-                #     cv2.putText(minimap, text, (tx, ty), cv2.FONT_HERSHEY_SIMPLEX, font_scale, text_color, thickness)
+                # Draw display label (jersey number or compact ID)
+                if p.id != -1 and display_label_fn is not None:
+                    text = display_label_fn(p.id)
+                    font_scale = 0.35
+                    thickness = 1
+                    (tw, th), _ = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, font_scale, thickness)
+                    # Center text on dot
+                    tx = mx - tw // 2
+                    ty = my + th // 2 - 1
+                    
+                    # Text color: White for most, Black for light backgrounds (like Yellow Referee)
+                    text_color = Colors.to_bgr(Colors.TEXT)
+                    if p.team == TeamID.REFEREE: 
+                        text_color = (0, 0, 0)
+                    
+                    cv2.putText(minimap, text, (tx, ty), cv2.FONT_HERSHEY_SIMPLEX, font_scale, text_color, thickness)
 
         # 2. Draw Ball
         if frame_data.ball and frame_data.ball.pitch_position:

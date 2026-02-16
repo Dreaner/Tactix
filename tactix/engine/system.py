@@ -634,17 +634,18 @@ class TactixEngine:
             for p in frame_data.players:
                 kmh = p.speed * 3.6
                 speed_str = f" {kmh:.1f}" if kmh > 0.5 else ""
-                jersey_str = f" J{p.jersey_number}" if p.jersey_number else ""
+                # Use display label from registry: jersey number if confirmed, else compact ID
+                display_label = self.player_registry.get_display_label(p.id) if p.id != -1 else "?"
                 if p.team == TeamID.A:
-                    color_indices.append(0); labels.append(f"#{p.id}{jersey_str}{speed_str}")
+                    color_indices.append(0); labels.append(f"#{display_label}{speed_str}")
                 elif p.team == TeamID.B:
-                    color_indices.append(1); labels.append(f"#{p.id}{jersey_str}{speed_str}")
+                    color_indices.append(1); labels.append(f"#{display_label}{speed_str}")
                 elif p.team == TeamID.REFEREE:
                     color_indices.append(2); labels.append("Ref")
                 elif p.team == TeamID.GOALKEEPER:
-                    color_indices.append(3); labels.append(f"GK{jersey_str}{speed_str}")
+                    color_indices.append(3); labels.append(f"GK#{display_label}{speed_str}")
                 else:
-                    color_indices.append(4); labels.append(f"#{p.id}{jersey_str}{speed_str}")
+                    color_indices.append(4); labels.append(f"#{display_label}{speed_str}")
 
             sv_dets = sv.Detections(xyxy=xyxy, class_id=np.array(color_indices))
             self.ellipse_annotator.color = self.palette
@@ -685,6 +686,7 @@ class TactixEngine:
                 duel_heatmap_overlay=overlays.duel_heatmap,
                 set_pieces_overlay=overlays.set_pieces,
                 formation_overlay=overlays.formation,
+                display_label_fn=self.player_registry.get_display_label,
             )
             h, w, _ = minimap.shape
             target_w = 300

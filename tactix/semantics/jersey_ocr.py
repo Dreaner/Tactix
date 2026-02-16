@@ -37,17 +37,18 @@ class JerseyOCR:
     when ENABLE_JERSEY_OCR is False.
     """
     
-    def __init__(self, device: str = 'cpu', languages: List[str] = None, gpu: bool = False):
+    def __init__(self, device: str = 'cpu', languages: List[str] = None, gpu: bool = None):
         """
         Initialize JerseyOCR (but don't load EasyOCR model yet).
         
         Args:
-            device: 'cpu', 'cuda', or 'mps' (ignored by EasyOCR, kept for consistency)
+            device: 'cpu', 'cuda', or 'mps'
             languages: EasyOCR language codes (default: ['en'])
-            gpu: Whether to use GPU for EasyOCR inference
+            gpu: Whether to use GPU for EasyOCR inference.
+                 If None, auto-detected from device (True for 'cuda'/'mps').
         """
         self.languages = languages or ['en']
-        self.gpu = gpu
+        self.gpu = gpu if gpu is not None else (device in ('cuda', 'mps'))
         self._reader = None  # Lazy-loaded on first detect() call
         
     def _ensure_reader(self) -> None:

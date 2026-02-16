@@ -52,6 +52,9 @@ class PlayerRegistry:
     - Once "confirmed" (enough frames + strong majority), the team is frozen
       and K-Means is no longer called for that player.
     - GK / Referee roles are hard-set via override_team() and skip voting.
+    - Jersey-based re-identification: when a new tracker_id detects a jersey
+      number that was previously confirmed on a different (now stale) ID,
+      the historical record (team, jersey, etc.) is transferred.
     """
 
     # How many frames a player must be seen before their team is confirmed.
@@ -61,6 +64,11 @@ class PlayerRegistry:
 
     def __init__(self) -> None:
         self._records: Dict[int, PlayerRecord] = {}
+        # Reverse index: confirmed jersey number → tracker_id that owns it
+        self._jersey_to_tid: Dict[str, int] = {}
+        # Compact display IDs so labels stay short (1, 2, 3...)
+        self._display_ids: Dict[int, int] = {}
+        self._next_display_id: int = 1
 
     # ------------------------------------------------------------------
     # Record access
@@ -165,6 +173,10 @@ class PlayerRegistry:
         """
         Locks jersey number if ≥5 reads with ≥70% agreement.
         Returns True if newly upgraded this call.
+
+        Also handles re-identification: if the confirmed number was previously
+        owned by a different tracker_id, transfers that old record's team/jersey
+        state to the current one so identity persists across tracking loss.
         """
         record = self._records.get(tracker_id)
         if record is None or record.jersey_locked:
@@ -180,8 +192,41 @@ class PlayerRegistry:
         
         if ratio >= 0.70:
             record.jersey_locked = True
+            # --- Re-identification via jersey number ---
+            old_tid = self._jersey_to_tid.get(most_common)
+            if old_tid is not None and old_tid != tracker_id:
+                old_record = self._records.get(old_tid)
+                if old_record is not None:
+                    # Inherit team assignment from previous identity
+                    if old_record.confirmed and not record.confirmed:
+                        record.team = old_record.team
+                        record.team_confidence = old_record.team_confidence
+                        record.confirmed = True
+                    # Inherit compact display ID
+                    if old_tid in self._display_ids:
+                        self._display_ids[tracker_id] = self._display_ids[old_tid]
+            # Update reverse index
+            self._jersey_to_tid[most_common] = tracker_id
             return True
         return False
+
+    # ------------------------------------------------------------------
+    # Display labels
+    # ------------------------------------------------------------------
+
+    def get_display_label(self, tracker_id: int) -> str:
+        """
+        Returns the best available short label for display.
+        Priority: confirmed jersey number > compact display ID.
+        """
+        jersey = self.get_jersey_number(tracker_id)
+        if jersey is not None:
+            return jersey
+        # Fall back to compact sequential ID
+        if tracker_id not in self._display_ids:
+            self._display_ids[tracker_id] = self._next_display_id
+            self._next_display_id += 1
+        return str(self._display_ids[tracker_id])
 
     def cleanup_stale(self, active_ids: set, max_age: int = 300) -> None:
         """Removes records not seen in max_age frames (for memory management)."""

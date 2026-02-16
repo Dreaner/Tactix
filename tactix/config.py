@@ -57,8 +57,8 @@ class Config:
     PITCH_MODEL_PATH: str = "assets/weights/football_pitch.pt"
     PLAYER_MODEL_PATH: str = "assets/weights/ball_player_yolo26x.pt"
     
-    INPUT_VIDEO: str = "assets/samples/test2.mp4"
-    OUTPUT_VIDEO: str = "assets/output/test2_Result.mp4"
+    INPUT_VIDEO: str = "assets/samples/Arsenal 2-3 Manchester United – Tactical Cam Highlights Premier League 25012026_1080p.mp4"
+    OUTPUT_VIDEO: str = "assets/output/Arsenal 2-3 Manchester United – Tactical Cam Highlights Premier League 25012026_1080p_Result.mp4"
     PITCH_TEMPLATE: str = "assets/pitch_bg.png"
     
     # FIFA EPTS Standard Transfer Format Export
